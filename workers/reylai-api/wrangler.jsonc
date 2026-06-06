@@ -17,7 +17,7 @@
     "MISTRAL_CHAT_URL": "https://api.mistral.ai/v1/chat/completions",
     "MISTRAL_MODEL": "mistral-small-latest",
     "MISTRAL_VISION_MODEL": "mistral-small-latest",
-    "TURNSTILE_SITE_KEY": "",
+    "TURNSTILE_SITE_KEY": "0x4AAAAAADf7TXMs0rMZvUad",
     "AUTH_REQUIRE_TURNSTILE": "true"
   },
   "d1_databases": [
@@ -29,7 +29,7 @@
     }
   ],
   "secrets": {
-    "required": ["MISTRAL_API_KEY", "GAS_WEB_APP_URL"]
+    "required": ["MISTRAL_API_KEY", "GAS_WEB_APP_URL", "TURNSTILE_SECRET_KEY"]
   },
   "observability": {
     "enabled": true,
