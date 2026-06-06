@@ -20,6 +20,7 @@ const MAX_CHAT_HISTORY_CHATS = 200;
 const MAX_CHAT_HISTORY_MESSAGES = 120;
 const MAX_CHAT_HISTORY_TEXT_CHARS = 12000;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const BOOK_ARCHIVE_PDF_RE = /(?:href|data-name)=["'](?:\.\/)?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.pdf["']/gi;
 
 type Book = {
   book_id?: string;
@@ -792,7 +793,63 @@ async function enrichBook(book: Book, env: Env): Promise<Book> {
 
 async function fetchLibrary(env: Env): Promise<Book[]> {
   const data = await fetchStaticJson<unknown>(env, "/reylai_library.json");
-  return Array.isArray(data) ? data.filter(isBook) : [];
+  const registeredBooks = Array.isArray(data) ? data.filter(isBook) : [];
+  const archiveIds = await fetchBookArchiveIds(env);
+  if (!archiveIds.length) return registeredBooks;
+
+  const registeredById = new Map<string, Book>();
+  for (const book of registeredBooks) {
+    const key = safeId(book.book_id || book.drive_id || "");
+    if (key && !registeredById.has(key)) registeredById.set(key, book);
+  }
+
+  const seen = new Set<string>();
+  const archiveBooks = archiveIds.map((id) => {
+    seen.add(id);
+    const registered = registeredById.get(id) || {};
+    const title = String(registered.title || registered.name || "").trim();
+    return {
+      ...registered,
+      book_id: id,
+      drive_id: registered.drive_id || "",
+      local_path: registered.local_path || "",
+      grade: registered.grade || "9",
+      name: registered.name || title || `${id}.pdf`,
+      title: title || registered.name || `${id}.pdf`,
+      pdf_url: archivePdfUrl(env, id),
+      pdf_source: "book_archive"
+    };
+  });
+
+  const extraBooks = registeredBooks.filter((book) => {
+    const key = safeId(book.book_id || book.drive_id || "");
+    return !key || !seen.has(key);
+  });
+  return [...archiveBooks, ...extraBooks];
+}
+
+async function fetchBookArchiveIds(env: Env): Promise<string[]> {
+  if (!env.BOOKS_REMOTE_BASE_URL) return [];
+  const response = await fetch(ensureSlash(env.BOOKS_REMOTE_BASE_URL), {
+    headers: { "accept": "text/html" },
+    cf: { cacheTtl: 300, cacheEverything: true }
+  });
+  if (!response.ok) return [];
+  const html = await readTextSnippet(response, 50000);
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  for (const match of html.matchAll(BOOK_ARCHIVE_PDF_RE)) {
+    const id = safeId(match[1] || "");
+    if (id && !seen.has(id)) {
+      seen.add(id);
+      ids.push(id);
+    }
+  }
+  return ids;
+}
+
+function archivePdfUrl(env: Env, id: string): string {
+  return new URL(`${encodeURIComponent(id)}.pdf`, ensureSlash(env.BOOKS_REMOTE_BASE_URL || "https://thejinx1.github.io/blupblupreylai-books/")).toString();
 }
 
 async function fetchScanData(env: Env, keys: string[]): Promise<ScanData | null> {
