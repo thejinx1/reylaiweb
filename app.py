@@ -1895,34 +1895,139 @@ body::after {
   inset: 0;
   z-index: 60;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 440px);
-  gap: clamp(24px, 4vw, 56px);
+  grid-template-columns: minmax(0, 0.95fr) minmax(320px, 440px);
+  gap: clamp(24px, 5vw, 72px);
   align-items: center;
-  padding: clamp(20px, 5vw, 72px);
+  padding: clamp(18px, 5vw, 72px);
   background:
-    linear-gradient(135deg, rgba(7,7,15,0.94), rgba(16,24,32,0.92)),
-    radial-gradient(circle at 20% 20%, rgba(99,102,241,0.14), transparent 42%);
+    linear-gradient(135deg, #05030c 0%, #101127 43%, #061a1a 100%),
+    linear-gradient(155deg, rgba(99,102,241,0.22), transparent 46%),
+    linear-gradient(22deg, transparent 0%, rgba(94,234,212,0.12) 42%, transparent 72%);
   opacity: 0;
   pointer-events: none;
-  transform: scale(1.015);
-  transition: opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1), transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  visibility: hidden;
+  transform: scale(1.018);
+  overflow: hidden;
+  transition:
+    opacity 0.58s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.58s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0.58s step-end;
+}
+
+.account-auth-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px),
+    linear-gradient(rgba(255,255,255,0.028) 1px, transparent 1px);
+  background-size: 54px 54px;
+  -webkit-mask-image: linear-gradient(135deg, rgba(0,0,0,0.84), transparent 78%);
+  mask-image: linear-gradient(135deg, rgba(0,0,0,0.84), transparent 78%);
+  pointer-events: none;
+}
+
+.account-auth-screen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(115deg, transparent 0%, rgba(255,255,255,0.09) 34%, transparent 35%),
+    linear-gradient(300deg, transparent 0%, rgba(94,234,212,0.09) 62%, transparent 63%);
+  opacity: 0.65;
+  transform: translate3d(-2%, -1%, 0);
+  animation: authLiquidSheen 9s ease-in-out infinite alternate;
+  pointer-events: none;
 }
 
 .account-auth-screen.active {
   opacity: 1;
   pointer-events: all;
+  visibility: visible;
   transform: scale(1);
+  transition:
+    opacity 0.58s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.58s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s step-start;
+}
+
+body:not(.app-ready) #libraryScreen,
+body:not(.app-ready) #analysisScreen,
+body.account-auth-visible #libraryScreen,
+body.account-auth-visible #analysisScreen {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+body.app-ready #libraryScreen {
+  animation: appScreenReveal 0.72s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes appScreenReveal {
+  from { opacity: 0; transform: translateY(18px) scale(0.985); filter: blur(10px); }
+  to { opacity: 1; transform: translateY(0) scale(1); filter: none; }
+}
+
+@keyframes authLiquidSheen {
+  from { transform: translate3d(-2%, -1%, 0); opacity: 0.46; }
+  to { transform: translate3d(2%, 1.5%, 0); opacity: 0.78; }
 }
 
 .auth-hero {
   max-width: 560px;
   display: grid;
-  gap: 18px;
+  gap: 20px;
+  position: relative;
+  z-index: 1;
+  animation: authHeroIn 0.86s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.auth-brand-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.auth-logo-box {
+  width: 66px;
+  height: 66px;
+  display: grid;
+  place-items: center;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.20);
+  background: rgba(255,255,255,0.10);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 24px 70px rgba(0,0,0,0.30);
+  backdrop-filter: blur(18px);
+}
+
+.auth-logo-box img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+}
+
+.auth-brand-name {
+  font-family: 'Manrope', sans-serif;
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.auth-brand-sub {
+  margin-top: 2px;
+  color: rgba(243,239,255,0.62);
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .auth-kicker {
-  color: var(--green);
-  font-size: 12px;
+  width: fit-content;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(94,234,212,0.20);
+  background: rgba(94,234,212,0.08);
+  color: #8ff7e5;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -1930,85 +2035,204 @@ body::after {
 
 .auth-hero-title {
   font-family: 'Manrope', sans-serif;
-  font-size: clamp(32px, 6vw, 68px);
-  line-height: 0.96;
-  font-weight: 800;
+  font-size: clamp(34px, 6.5vw, 72px);
+  line-height: 0.94;
+  font-weight: 900;
+  letter-spacing: 0;
 }
 
 .auth-hero-text {
   max-width: 520px;
-  color: var(--text-secondary);
+  color: rgba(243,239,255,0.70);
   font-size: 16px;
   line-height: 1.7;
+}
+
+.auth-benefits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.auth-benefit {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.13);
+  background: rgba(255,255,255,0.08);
+  color: rgba(243,239,255,0.78);
+  font-size: 12px;
+  font-weight: 800;
+  backdrop-filter: blur(18px);
+}
+
+.auth-benefit-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #5eead4, #fbbf24);
+  box-shadow: 0 0 18px rgba(94,234,212,0.44);
 }
 
 .auth-panel-card {
   width: min(440px, 100%);
   justify-self: end;
-  padding: 18px;
-  border-radius: 18px;
-  border: 1px solid rgba(255,255,255,0.13);
-  background: rgba(18,18,30,0.72);
-  backdrop-filter: blur(22px);
-  box-shadow: 0 28px 90px rgba(0,0,0,0.38), inset 0 1px 0 rgba(255,255,255,0.08);
-  animation: accountPanelFloat 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+  padding: clamp(18px, 3vw, 24px);
+  border-radius: 28px;
+  border: 1px solid rgba(255,255,255,0.16);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.07)),
+    rgba(11,12,24,0.76);
+  backdrop-filter: blur(28px) saturate(1.18);
+  box-shadow:
+    0 34px 100px rgba(0,0,0,0.46),
+    0 0 0 1px rgba(94,234,212,0.05),
+    inset 0 1px 0 rgba(255,255,255,0.18);
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  animation: accountPanelFloat 0.82s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.auth-panel-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(115deg, rgba(255,255,255,0.18), transparent 28%),
+    linear-gradient(305deg, transparent 58%, rgba(94,234,212,0.12));
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.auth-panel-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 @keyframes accountPanelFloat {
-  from { opacity: 0; transform: translateY(18px); }
+  from { opacity: 0; transform: translateY(28px) scale(0.97); filter: blur(8px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes authHeroIn {
+  from { opacity: 0; transform: translateX(-22px); filter: blur(10px); }
+  to { opacity: 1; transform: translateX(0); filter: none; }
+}
+
+.auth-panel-top {
+  display: grid;
+  gap: 5px;
+  margin-bottom: 18px;
+}
+
+.auth-panel-label {
+  color: #8ff7e5;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.auth-panel-title {
+  font-family: 'Manrope', sans-serif;
+  font-size: 26px;
+  line-height: 1.1;
+  font-weight: 900;
+}
+
+.auth-panel-lead {
+  color: rgba(243,239,255,0.62);
+  font-size: 13px;
+  line-height: 1.55;
 }
 
 .auth-tabs {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  padding: 5px;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.08);
-  margin-bottom: 16px;
+  gap: 0;
+  min-height: 50px;
+  margin: 0 -24px 18px;
+  border-top: 1px solid rgba(255,255,255,0.10);
+  border-bottom: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.045);
 }
 
 .auth-tab {
-  height: 38px;
+  position: relative;
+  height: 50px;
   border: 0;
-  border-radius: 999px;
   background: transparent;
-  color: var(--text-secondary);
+  color: rgba(243,239,255,0.48);
   font-weight: 800;
   cursor: pointer;
-  transition: var(--transition);
+  transition: color 0.28s cubic-bezier(0.22, 1, 0.36, 1), background 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .auth-tab.active {
-  color: #071015;
-  background: linear-gradient(135deg, #67e8f9, #5eead4);
-  box-shadow: 0 12px 28px rgba(94,234,212,0.18);
+  color: #ffffff;
+  background: rgba(255,255,255,0.045);
+}
+
+.auth-tab.active::after {
+  content: '';
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  bottom: -1px;
+  height: 3px;
+  border-radius: 999px 999px 0 0;
+  background: linear-gradient(90deg, #5eead4, #a78bfa, #fbbf24);
+  box-shadow: 0 0 22px rgba(167,139,250,0.42);
 }
 
 .account-form {
   display: grid;
-  gap: 12px;
+  gap: 13px;
 }
 
 .account-field {
   display: grid;
-  gap: 7px;
+  gap: 8px;
+  transition:
+    opacity 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+    max-height 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+    margin 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.account-field-optional {
+  max-height: 0;
+  margin-top: -8px;
+  opacity: 0;
+  transform: translateY(-8px);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.account-field-optional.active {
+  max-height: 96px;
+  margin-top: 0;
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
 }
 
 .account-label {
-  color: var(--text-secondary);
+  color: rgba(243,239,255,0.68);
   font-size: 12px;
   font-weight: 800;
 }
 
 .account-input {
   width: 100%;
-  min-height: 46px;
-  border-radius: 12px;
+  min-height: 48px;
+  border-radius: 14px;
   border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.07);
+  background: rgba(255,255,255,0.075);
   color: var(--text-primary);
   padding: 0 14px;
   outline: none;
@@ -2016,65 +2240,158 @@ body::after {
   transition: var(--transition);
 }
 
+.account-input-shell {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  align-items: center;
+  gap: 12px;
+  min-height: 54px;
+  padding: 0 15px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.10);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.10);
+  transition:
+    border-color 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.account-input-shell:focus-within {
+  border-color: rgba(94,234,212,0.58);
+  background: rgba(255,255,255,0.14);
+  box-shadow: 0 0 0 4px rgba(94,234,212,0.12), inset 0 1px 0 rgba(255,255,255,0.16);
+  transform: translateY(-1px);
+}
+
+.account-field-icon {
+  display: grid;
+  place-items: center;
+  color: rgba(243,239,255,0.62);
+}
+
+.account-field-icon svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2;
+}
+
+.account-input-shell .account-input {
+  min-height: 52px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
 .account-input:focus {
   border-color: rgba(94,234,212,0.56);
   box-shadow: 0 0 0 4px rgba(94,234,212,0.12);
 }
 
+.account-input-shell .account-input:focus {
+  box-shadow: none;
+}
+
 .account-input::placeholder {
-  color: var(--text-muted);
+  color: rgba(193,202,214,0.54);
 }
 
 .remember-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  color: var(--text-secondary);
+  gap: 11px;
+  width: fit-content;
+  color: rgba(243,239,255,0.70);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 800;
+  cursor: pointer;
+  user-select: none;
 }
 
 .remember-row input {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--green);
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.remember-check {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.08);
+  color: transparent;
+  transition: var(--transition);
+}
+
+.remember-check svg {
+  width: 16px;
+  height: 16px;
+}
+
+.remember-row input:checked + .remember-check {
+  color: #061015;
+  background: linear-gradient(135deg, #34d399, #67e8f9);
+  border-color: rgba(94,234,212,0.70);
+  box-shadow: 0 12px 28px rgba(52,211,153,0.24);
+}
+
+.auth-field-note {
+  margin-top: -4px;
+  color: rgba(243,239,255,0.48);
+  font-size: 11px;
+  line-height: 1.45;
+  font-weight: 700;
 }
 
 .turnstile-wrap {
-  min-height: 70px;
+  min-height: 78px;
   display: grid;
   align-items: center;
-  justify-items: start;
+  justify-items: center;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.055);
+  overflow: hidden;
 }
 
 .turnstile-note,
 .account-auth-error {
-  color: var(--amber);
+  color: rgba(251,191,36,0.94);
   font-size: 12px;
   line-height: 1.45;
+  text-align: center;
 }
 
 .account-auth-error {
   min-height: 18px;
   color: var(--red);
   font-weight: 700;
+  text-align: left;
 }
 
 .account-submit {
-  height: 48px;
+  height: 52px;
   border: 0;
   border-radius: 999px;
   color: #071015;
-  background: linear-gradient(135deg, #5eead4, #67e8f9);
+  background: linear-gradient(100deg, #5eead4 0%, #67e8f9 48%, #a78bfa 100%);
   font-weight: 900;
   cursor: pointer;
-  box-shadow: 0 16px 36px rgba(94,234,212,0.18);
+  box-shadow: 0 18px 42px rgba(94,234,212,0.20), inset 0 1px 0 rgba(255,255,255,0.34);
   transition: var(--transition);
 }
 
 .account-submit:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 20px 48px rgba(94,234,212,0.24);
+  transform: translateY(-2px);
+  box-shadow: 0 24px 54px rgba(94,234,212,0.28), inset 0 1px 0 rgba(255,255,255,0.44);
 }
 
 .account-submit:disabled {
@@ -2084,14 +2401,15 @@ body::after {
 
 .account-switch-note {
   text-align: center;
-  color: var(--text-secondary);
+  color: rgba(243,239,255,0.60);
   font-size: 13px;
+  font-weight: 700;
 }
 
 .account-switch-note button {
   border: 0;
   background: transparent;
-  color: var(--green);
+  color: #8ff7e5;
   font-weight: 900;
   cursor: pointer;
 }
@@ -2197,14 +2515,19 @@ body::after {
 @media (max-width: 860px) {
   .account-auth-screen {
     grid-template-columns: 1fr;
-    align-content: center;
+    align-content: start;
     overflow-y: auto;
+    gap: 22px;
   }
   .auth-hero {
     max-width: none;
+    gap: 14px;
   }
   .auth-hero-title {
     font-size: clamp(30px, 10vw, 48px);
+  }
+  .auth-benefits {
+    display: none;
   }
   .auth-panel-card {
     justify-self: stretch;
@@ -2214,11 +2537,77 @@ body::after {
 
 @media (max-width: 620px) {
   .account-auth-screen {
-    padding: 18px;
-    gap: 18px;
+    padding: 14px 16px max(18px, env(safe-area-inset-bottom));
+    gap: 12px;
+  }
+  .auth-logo-box {
+    width: 54px;
+    height: 54px;
+    border-radius: 17px;
+  }
+  .auth-logo-box img {
+    width: 36px;
+    height: 36px;
+  }
+  .auth-brand-name {
+    font-size: 20px;
+  }
+  .auth-kicker {
+    display: none;
+  }
+  .auth-hero-title {
+    font-size: clamp(26px, 8.5vw, 34px);
+    line-height: 1.02;
   }
   .auth-hero-text {
-    font-size: 14px;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .account-auth-screen.signup-mode .auth-hero {
+    gap: 8px;
+  }
+  .account-auth-screen.signup-mode .auth-hero-text {
+    display: none;
+  }
+  .account-auth-screen.signup-mode .auth-hero-title {
+    font-size: clamp(25px, 8vw, 32px);
+  }
+  .account-auth-screen.signup-mode .auth-panel-card {
+    margin-top: 24px;
+  }
+  .auth-panel-card {
+    border-radius: 22px;
+    padding: 16px;
+  }
+  .auth-tabs {
+    min-height: 48px;
+    margin-left: -16px;
+    margin-right: -16px;
+  }
+  .auth-panel-title {
+    font-size: 22px;
+  }
+  .auth-panel-top {
+    margin-bottom: 14px;
+  }
+  .account-form {
+    gap: 11px;
+  }
+  .account-input-shell {
+    min-height: 50px;
+    border-radius: 18px;
+  }
+  .account-input-shell .account-input {
+    min-height: 48px;
+  }
+  .account-submit {
+    height: 50px;
+  }
+  .turnstile-wrap {
+    min-height: 72px;
+    justify-items: start;
+    padding-left: 8px;
+    padding-right: 8px;
   }
   .account-chip-name {
     display: none;
@@ -7020,30 +7409,68 @@ body::after {
 
 <section class="account-auth-screen" id="accountAuthScreen" aria-label="ReylAI hesap girişi">
   <div class="auth-hero">
-    <div class="auth-kicker">Güvenli çalışma alanı</div>
-    <h1 class="auth-hero-title">ReylAI hesabınla devam et.</h1>
-    <p class="auth-hero-text">Sohbet geçmişin hesabına bağlanır, bu cihazda oturumun saklanabilir ve girişlerde Cloudflare doğrulaması çalışır.</p>
+    <div class="auth-brand-row">
+      <div class="auth-logo-box">
+        <img src="{{ reylai_icon_src }}" alt="ReylAI">
+      </div>
+      <div>
+        <div class="auth-brand-name">ReylAI</div>
+        <div class="auth-brand-sub">MEB kitapları için kişisel AI alanı</div>
+      </div>
+    </div>
+    <div class="auth-kicker" id="authModeKicker">Güvenli oturum</div>
+    <h1 class="auth-hero-title" id="accountAuthTitle">ReylAI'ye hoş geldin.</h1>
+    <p class="auth-hero-text" id="accountAuthSubtitle">Kitapların, sohbet geçmişin ve çalışma alanın hesabına bağlı şekilde açılır.</p>
+    <div class="auth-benefits" aria-label="Hesap özellikleri">
+      <div class="auth-benefit"><span class="auth-benefit-dot"></span><span>Cloudflare doğrulaması</span></div>
+      <div class="auth-benefit"><span class="auth-benefit-dot"></span><span>Korunan şifreler</span></div>
+      <div class="auth-benefit"><span class="auth-benefit-dot"></span><span>Cihazda oturum</span></div>
+    </div>
   </div>
   <div class="auth-panel-card">
+    <div class="auth-panel-top">
+      <div class="auth-panel-label">Hesap</div>
+      <h2 class="auth-panel-title" id="authPanelTitle">Giriş yap</h2>
+      <p class="auth-panel-lead" id="authPanelLead">Kayıtlı e-posta ve şifrenle devam et.</p>
+    </div>
     <div class="auth-tabs" role="tablist" aria-label="Hesap işlemleri">
-      <button class="auth-tab active" id="loginTabBtn" type="button" onclick="setAccountAuthMode('login')">Log in</button>
-      <button class="auth-tab" id="signupTabBtn" type="button" onclick="setAccountAuthMode('signup')">Sign up</button>
+      <button class="auth-tab active" id="loginTabBtn" type="button" onclick="setAccountAuthMode('login')">Giriş</button>
+      <button class="auth-tab" id="signupTabBtn" type="button" onclick="setAccountAuthMode('signup')">Kayıt ol</button>
     </div>
     <form class="account-form" id="accountAuthForm" onsubmit="submitAccountAuth(event)">
-      <div class="account-field" id="displayNameField" style="display:none">
-        <label class="account-label" for="accountDisplayName">Display name</label>
-        <input class="account-input" id="accountDisplayName" type="text" autocomplete="name" maxlength="40" placeholder="Örn. Reyli">
+      <div class="account-field account-field-optional" id="displayNameField">
+        <label class="account-label" for="accountDisplayName">Görünen ad</label>
+        <div class="account-input-shell">
+          <span class="account-field-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>
+          </span>
+          <input class="account-input" id="accountDisplayName" type="text" autocomplete="name" maxlength="40" placeholder="Adın nasıl görünsün?">
+        </div>
       </div>
       <div class="account-field">
         <label class="account-label" for="accountEmail">E-posta</label>
-        <input class="account-input" id="accountEmail" type="email" autocomplete="email" maxlength="254" placeholder="sen@example.com" required>
+        <div class="account-input-shell">
+          <span class="account-field-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+          </span>
+          <input class="account-input" id="accountEmail" type="email" autocomplete="email" maxlength="254" placeholder="eposta@example.com" required>
+        </div>
       </div>
       <div class="account-field">
         <label class="account-label" for="accountPassword">Şifre</label>
-        <input class="account-input" id="accountPassword" type="password" autocomplete="current-password" minlength="8" maxlength="128" placeholder="En az 8 karakter" required>
+        <div class="account-input-shell">
+          <span class="account-field-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+          </span>
+          <input class="account-input" id="accountPassword" type="password" autocomplete="current-password" minlength="8" maxlength="128" placeholder="En az 8 karakter" required>
+        </div>
       </div>
+      <div class="auth-field-note" id="accountPasswordHint">Şifren en az 8 karakter olmalı ve güvenli biçimde korunur.</div>
       <label class="remember-row">
         <input id="rememberDevice" type="checkbox" checked>
+        <span class="remember-check" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        </span>
         <span>Bu cihazda oturumu hatırla</span>
       </label>
       <div class="turnstile-wrap">
@@ -7054,7 +7481,7 @@ body::after {
       <button class="account-submit" id="accountSubmitBtn" type="submit">Giriş yap</button>
       <div class="account-switch-note">
         <span id="accountSwitchText">Hesabın yok mu?</span>
-        <button type="button" id="accountSwitchBtn" onclick="setAccountAuthMode('signup')">Sign up</button>
+        <button type="button" id="accountSwitchBtn" onclick="setAccountAuthMode('signup')">Kayıt ol</button>
       </div>
     </form>
   </div>
@@ -7127,7 +7554,7 @@ body::after {
         <div class="account-menu-name" id="accountMenuName">Hesap</div>
         <div class="account-menu-email" id="accountMenuEmail"></div>
         <div class="profile-edit-row">
-          <input class="account-input" id="profileDisplayName" type="text" maxlength="40" placeholder="Display name">
+          <input class="account-input" id="profileDisplayName" type="text" maxlength="40" placeholder="Görünen ad">
           <button class="profile-save-btn" type="button" onclick="saveAccountProfile()">Kaydet</button>
         </div>
         <button class="logout-btn" type="button" onclick="logoutAccount()">Çıkış yap</button>
@@ -7502,14 +7929,18 @@ function startLoadingStatusCycle(message) {
 function showLoadingOverlay(message) {
   const overlay = document.getElementById('appLoadingOverlay');
   if (!overlay) return;
+  document.body.classList.add('app-loading-active');
+  document.body.classList.remove('app-ready');
   overlay.classList.remove('done');
   startLoadingStatusCycle(message || LOADING_STATUSES[0]);
 }
 
-function hideLoadingOverlay() {
+function hideLoadingOverlay(revealApp) {
   clearInterval(_loadingStatusTimer);
   const overlay = document.getElementById('appLoadingOverlay');
   if (overlay) overlay.classList.add('done');
+  document.body.classList.remove('app-loading-active');
+  document.body.classList.toggle('app-ready', !!revealApp);
 }
 
 function getAppAuthToken() {
@@ -7546,6 +7977,8 @@ function apiFetch(url, options) {
 
 function showAccountAuth() {
   const screen = document.getElementById('accountAuthScreen');
+  document.body.classList.add('account-auth-visible');
+  document.body.classList.remove('app-ready');
   if (screen) screen.classList.add('active');
   setAccountAuthMode(_accountAuthMode || 'login');
   renderAccountTurnstile();
@@ -7554,6 +7987,7 @@ function showAccountAuth() {
 function hideAccountAuth() {
   const screen = document.getElementById('accountAuthScreen');
   if (screen) screen.classList.remove('active');
+  document.body.classList.remove('account-auth-visible');
 }
 
 function setAccountAuthError(message) {
@@ -7572,15 +8006,29 @@ function setAccountAuthMode(mode) {
   const submit = document.getElementById('accountSubmitBtn');
   const switchText = document.getElementById('accountSwitchText');
   const switchBtn = document.getElementById('accountSwitchBtn');
-  if (display) display.style.display = signup ? 'grid' : 'none';
+  const screen = document.getElementById('accountAuthScreen');
+  const title = document.getElementById('accountAuthTitle');
+  const subtitle = document.getElementById('accountAuthSubtitle');
+  const kicker = document.getElementById('authModeKicker');
+  const panelTitle = document.getElementById('authPanelTitle');
+  const panelLead = document.getElementById('authPanelLead');
+  const passwordHint = document.getElementById('accountPasswordHint');
+  if (display) display.classList.toggle('active', signup);
+  if (screen) screen.classList.toggle('signup-mode', signup);
   if (displayInput) displayInput.required = signup;
   if (loginTab) loginTab.classList.toggle('active', !signup);
   if (signupTab) signupTab.classList.toggle('active', signup);
   if (password) password.autocomplete = signup ? 'new-password' : 'current-password';
   if (submit) submit.textContent = signup ? 'Hesap oluştur' : 'Giriş yap';
+  if (title) title.textContent = signup ? "ReylAI hesabını oluştur." : "ReylAI'ye hoş geldin.";
+  if (subtitle) subtitle.textContent = signup ? 'Görünen adını seç, e-posta ve şifreyle güvenli çalışma alanını aç.' : 'Kitapların, sohbet geçmişin ve çalışma alanın hesabına bağlı şekilde açılır.';
+  if (kicker) kicker.textContent = signup ? 'Yeni hesap' : 'Güvenli oturum';
+  if (panelTitle) panelTitle.textContent = signup ? 'Kayıt ol' : 'Giriş yap';
+  if (panelLead) panelLead.textContent = signup ? 'E-posta, şifre ve görünen ad ile ReylAI alanını oluştur.' : 'Kayıtlı e-posta ve şifrenle devam et.';
+  if (passwordHint) passwordHint.textContent = signup ? 'En az 8 karakter kullan; şifreler güvenli biçimde korunur.' : 'Şifren korunan oturum doğrulaması için kullanılır.';
   if (switchText) switchText.textContent = signup ? 'Zaten hesabın var mı?' : 'Hesabın yok mu?';
   if (switchBtn) {
-    switchBtn.textContent = signup ? 'Log in' : 'Sign up';
+    switchBtn.textContent = signup ? 'Giriş yap' : 'Kayıt ol';
     switchBtn.onclick = function() { setAccountAuthMode(signup ? 'login' : 'signup'); };
   }
   setAccountAuthError('');
@@ -7614,6 +8062,7 @@ function renderAccountTurnstile() {
   _turnstileWidgetId = window.turnstile.render(target, {
     sitekey: _turnstileSiteKey,
     action: 'turnstile-spin-v1',
+    theme: 'dark',
     callback: function(token) {
       _turnstileToken = token || '';
       _turnstileReady = !!_turnstileToken;
@@ -7703,9 +8152,11 @@ async function submitAccountAuth(event) {
     _chatStoreLoadPromise = null;
     _chatStore = { chats: [] };
     await startApp();
-    hideLoadingOverlay();
+    hideLoadingOverlay(true);
     showToast('success', 'Hoş geldin', 'ReylAI hesabın hazır.', 2800);
   } catch(e) {
+    hideLoadingOverlay(false);
+    showAccountAuth();
     setAccountAuthError(e.message || 'Bağlantı hatası.');
     resetAccountTurnstile();
   } finally {
@@ -7783,6 +8234,7 @@ async function logoutAccount() {
   closeAccountMenu();
   updateAccountUI();
   renderChatHistory();
+  document.body.classList.remove('app-ready');
   showAccountAuth();
   showToast('info', 'Çıkış yapıldı', 'Bu cihazdaki oturum kapatıldı.', 2800);
 }
@@ -7793,7 +8245,7 @@ async function bootApp() {
   const token = getAppAuthToken();
   if (!token) {
     showAccountAuth();
-    hideLoadingOverlay();
+    hideLoadingOverlay(false);
     return;
   }
   try {
@@ -7804,13 +8256,13 @@ async function bootApp() {
     updateAccountUI();
     setLoadingStatus('Kütüphane ve sohbet geçmişi yükleniyor...');
     await startApp();
-    hideLoadingOverlay();
+    hideLoadingOverlay(true);
   } catch(e) {
     clearAppAuthToken();
     _accountUser = null;
     updateAccountUI();
     showAccountAuth();
-    hideLoadingOverlay();
+    hideLoadingOverlay(false);
   }
 }
 
