@@ -12,7 +12,7 @@
     }
   ],
   "vars": {
-    "STATIC_ORIGIN": "https://thejinx1.github.io/reylaiweb/",
+    "STATIC_ORIGIN": "https://ai.reyliar.xyz/",
     "BOOKS_REMOTE_BASE_URL": "https://thejinx1.github.io/blupblupreylai-books/",
     "MISTRAL_CHAT_URL": "https://api.mistral.ai/v1/chat/completions",
     "MISTRAL_MODEL": "mistral-small-latest",
