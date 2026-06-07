@@ -2417,10 +2417,17 @@ body.app-ready #libraryScreen {
   background: rgba(255,255,255,0.08);
   color: var(--text-primary);
   cursor: pointer;
+  transition: var(--transition);
 }
 
 .account-chip.visible {
   display: inline-flex;
+}
+
+.account-chip:hover {
+  border-color: rgba(94,234,212,0.34);
+  background: rgba(255,255,255,0.12);
+  transform: translateY(-1px);
 }
 
 .account-avatar {
@@ -2433,6 +2440,9 @@ body.app-ready #libraryScreen {
   color: #071015;
   font-size: 12px;
   font-weight: 900;
+  background-size: cover;
+  background-position: center;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.24);
 }
 
 .account-chip-name {
@@ -2444,22 +2454,41 @@ body.app-ready #libraryScreen {
   font-weight: 800;
 }
 
+.account-chip-role {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(94,234,212,0.24);
+  background: rgba(94,234,212,0.10);
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.account-chip-role.visible {
+  display: inline-flex;
+}
+
 .account-menu {
-  position: absolute;
-  top: calc(100% + 10px);
-  right: 20px;
-  width: min(300px, calc(100vw - 28px));
-  padding: 14px;
-  border-radius: 16px;
+  position: fixed;
+  top: 72px;
+  right: 24px;
+  width: min(352px, calc(100vw - 28px));
+  padding: 16px;
+  border-radius: 22px;
   border: 1px solid rgba(255,255,255,0.14);
-  background: rgba(14,16,28,0.94);
-  backdrop-filter: blur(18px);
-  box-shadow: 0 24px 70px rgba(0,0,0,0.36);
+  background: linear-gradient(145deg, rgba(36, 26, 61, 0.94), rgba(12, 8, 24, 0.92));
+  backdrop-filter: blur(22px) saturate(1.25);
+  -webkit-backdrop-filter: blur(22px) saturate(1.25);
+  box-shadow: 0 28px 86px rgba(0,0,0,0.48), inset 0 1px rgba(255,255,255,0.08);
   opacity: 0;
-  transform: translateY(-8px);
+  transform: translateY(-10px) scale(0.98);
   pointer-events: none;
   transition: var(--transition);
-  z-index: 5;
+  z-index: 360;
 }
 
 .account-menu.active {
@@ -2468,39 +2497,109 @@ body.app-ready #libraryScreen {
   pointer-events: all;
 }
 
+.account-menu-head {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.account-menu-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #5eead4, #fbbf24);
+  color: #071015;
+  font-size: 20px;
+  font-weight: 950;
+  background-size: cover;
+  background-position: center;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.28), 0 14px 34px rgba(0,0,0,0.22);
+}
+
 .account-menu-name {
   font-weight: 900;
   margin-bottom: 2px;
+  color: var(--text-primary);
 }
 
 .account-menu-email {
   color: var(--text-secondary);
   font-size: 12px;
-  margin-bottom: 12px;
   overflow-wrap: anywhere;
 }
 
-.profile-edit-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 8px;
-  margin-bottom: 10px;
+.account-role-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
 }
 
-.profile-save-btn,
-.logout-btn {
+.account-role-badge,
+.account-verify-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(196,181,253,0.18);
+  background: rgba(255,255,255,0.08);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.account-role-badge.admin,
+.account-role-badge.staff {
+  border-color: rgba(94,234,212,0.28);
+  background: rgba(94,234,212,0.10);
+  color: var(--green);
+}
+
+.account-verify-state {
+  width: 100%;
+  justify-content: center;
+  margin-top: 12px;
+  color: rgba(251,191,36,0.96);
+}
+
+.account-verify-state.verified {
+  color: var(--green);
+}
+
+.account-menu-actions {
+  display: grid;
+  gap: 9px;
+  margin-top: 14px;
+}
+
+.account-menu-btn {
   border: 1px solid rgba(255,255,255,0.12);
   border-radius: 999px;
   background: rgba(255,255,255,0.08);
   color: var(--text-primary);
   font-weight: 800;
   cursor: pointer;
-  padding: 0 12px;
+  padding: 0 14px;
   min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: var(--transition);
 }
 
-.logout-btn {
-  width: 100%;
+.account-menu-btn:hover {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(94,234,212,0.24);
+  transform: translateY(-1px);
+}
+
+.account-menu-btn.danger {
   color: var(--red);
 }
 
@@ -2610,6 +2709,7 @@ body.app-ready #libraryScreen {
   }
   .account-menu {
     right: 12px;
+    top: 62px;
   }
 }
 
@@ -4848,6 +4948,295 @@ body.app-ready #libraryScreen {
 
 .cfg-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; }
 
+.profile-settings-overlay,
+.admin-tools-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 320;
+  background: rgba(8, 6, 17, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.24s ease;
+  backdrop-filter: blur(24px) saturate(1.25);
+  -webkit-backdrop-filter: blur(24px) saturate(1.25);
+  padding: 18px;
+}
+
+.profile-settings-overlay.active,
+.admin-tools-overlay.active {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.profile-settings-panel,
+.admin-tools-panel {
+  width: min(560px, 100%);
+  max-height: min(760px, calc(100vh - 34px));
+  overflow-y: auto;
+  border: 1px solid rgba(196,181,253,0.18);
+  border-radius: 26px;
+  background: linear-gradient(145deg, rgba(36, 26, 61, 0.94), rgba(14, 10, 28, 0.90));
+  box-shadow: 0 30px 90px rgba(0,0,0,0.46), inset 0 1px rgba(255,255,255,0.08);
+  padding: 22px;
+  transform: translateY(18px) scale(0.98);
+  transition: transform 0.28s cubic-bezier(0.16,1,0.3,1);
+}
+
+.admin-tools-panel {
+  width: min(880px, 100%);
+}
+
+.profile-settings-overlay.active .profile-settings-panel,
+.admin-tools-overlay.active .admin-tools-panel {
+  transform: none;
+}
+
+.profile-settings-head,
+.admin-tools-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.profile-settings-kicker,
+.admin-tools-kicker {
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.profile-settings-title,
+.admin-tools-title {
+  margin-top: 5px;
+  color: var(--text-primary);
+  font-size: 22px;
+  font-weight: 950;
+  line-height: 1.1;
+}
+
+.profile-settings-grid {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.profile-photo-card {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(196,181,253,0.14);
+  background: rgba(255,255,255,0.06);
+}
+
+.profile-photo-preview {
+  width: 96px;
+  height: 96px;
+  border-radius: 28px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #5eead4, #fbbf24);
+  color: #071015;
+  font-size: 34px;
+  font-weight: 950;
+  background-size: cover;
+  background-position: center;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.24);
+}
+
+.profile-photo-input {
+  display: none;
+}
+
+.settings-form {
+  display: grid;
+  gap: 12px;
+}
+
+.settings-field {
+  display: grid;
+  gap: 7px;
+}
+
+.settings-label {
+  color: rgba(243,239,255,0.72);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.settings-input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid rgba(196,181,253,0.16);
+  border-radius: 16px;
+  background: rgba(8,6,17,0.45);
+  color: var(--text-primary);
+  padding: 0 14px;
+  outline: none;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+}
+
+.settings-input:focus {
+  border-color: rgba(94,234,212,0.45);
+  box-shadow: 0 0 0 4px rgba(94,234,212,0.09);
+}
+
+.verification-box {
+  display: grid;
+  gap: 10px;
+  padding: 13px;
+  border-radius: 18px;
+  border: 1px solid rgba(251,191,36,0.20);
+  background: rgba(251,191,36,0.07);
+}
+
+.verification-box.verified {
+  border-color: rgba(94,234,212,0.24);
+  background: rgba(94,234,212,0.07);
+}
+
+.verification-status {
+  color: rgba(243,239,255,0.76);
+  font-size: 12.5px;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+.verification-actions {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+}
+
+.settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.admin-stat {
+  min-height: 78px;
+  padding: 13px;
+  border-radius: 18px;
+  border: 1px solid rgba(196,181,253,0.14);
+  background: rgba(255,255,255,0.06);
+}
+
+.admin-stat-value {
+  color: var(--text-primary);
+  font-size: 22px;
+  font-weight: 950;
+}
+
+.admin-stat-label {
+  margin-top: 4px;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  font-weight: 800;
+}
+
+.admin-account-list {
+  display: grid;
+  gap: 9px;
+}
+
+.admin-account-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  padding: 13px;
+  border-radius: 18px;
+  border: 1px solid rgba(196,181,253,0.14);
+  background: rgba(255,255,255,0.055);
+}
+
+.admin-account-main {
+  min-width: 0;
+}
+
+.admin-account-name {
+  color: var(--text-primary);
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.admin-account-meta {
+  margin-top: 4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.admin-account-flags {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.admin-mini-badge {
+  min-height: 24px;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(196,181,253,0.16);
+  background: rgba(255,255,255,0.07);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.admin-mini-badge.good {
+  color: var(--green);
+  border-color: rgba(94,234,212,0.24);
+  background: rgba(94,234,212,0.08);
+}
+
+.admin-mini-badge.warn {
+  color: rgba(251,191,36,0.96);
+  border-color: rgba(251,191,36,0.22);
+  background: rgba(251,191,36,0.08);
+}
+
+@media (max-width: 720px) {
+  .profile-settings-grid {
+    grid-template-columns: 1fr;
+  }
+  .verification-actions {
+    grid-template-columns: 1fr;
+  }
+  .admin-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .admin-account-row {
+    grid-template-columns: 1fr;
+  }
+  .admin-account-flags {
+    justify-content: flex-start;
+  }
+}
+
 /* Auth modal */
 .auth-overlay {
   position: fixed;
@@ -6944,6 +7333,8 @@ body::after {
 .auth-overlay,
 .rename-overlay,
 .add-overlay,
+.profile-settings-overlay,
+.admin-tools-overlay,
 .task-overlay {
   background: rgba(8, 6, 17, 0.66);
 }
@@ -6954,6 +7345,8 @@ body::after {
 .auth-panel,
 .rename-panel,
 .add-panel,
+.profile-settings-panel,
+.admin-tools-panel,
 .upload-card,
 .task-panel,
 .toast {
@@ -6961,11 +7354,19 @@ body::after {
   border-color: rgba(196, 181, 253, 0.18);
 }
 
+#analysisScreen.active {
+  background: rgba(5, 3, 12, 0.98);
+}
+
+.analysis-left {
+  background: linear-gradient(180deg, rgba(24, 16, 42, 0.96), rgba(10, 7, 22, 0.96));
+}
+
 .analysis-right {
   background:
-    linear-gradient(135deg, rgba(33, 24, 55, 0.52), rgba(12, 8, 24, 0.42)),
-    rgba(9, 7, 20, 0.58);
-  border-color: rgba(196, 181, 253, 0.14);
+    linear-gradient(135deg, rgba(33, 24, 55, 0.94), rgba(12, 8, 24, 0.92)),
+    rgba(9, 7, 20, 0.96);
+  border-color: rgba(196, 181, 253, 0.20);
 }
 
 .chat-input-bar {
@@ -7538,19 +7939,27 @@ body::after {
       <button class="account-chip" id="accountChip" type="button" onclick="toggleAccountMenu()" aria-label="Hesap menüsünü aç">
         <span class="account-avatar" id="accountAvatar">R</span>
         <span class="account-chip-name" id="accountChipName">Hesap</span>
+        <span class="account-chip-role" id="accountChipRole">Admin</span>
       </button>
       <div class="status-pill" id="libStatus">
         <span class="status-dot"></span>
         <span id="libStatusText">Haz&#305;r</span>
       </div>
       <div class="account-menu" id="accountMenu">
-        <div class="account-menu-name" id="accountMenuName">Hesap</div>
-        <div class="account-menu-email" id="accountMenuEmail"></div>
-        <div class="profile-edit-row">
-          <input class="account-input" id="profileDisplayName" type="text" maxlength="40" placeholder="Görünen ad">
-          <button class="profile-save-btn" type="button" onclick="saveAccountProfile()">Kaydet</button>
+        <div class="account-menu-head">
+          <div class="account-menu-avatar" id="accountMenuAvatar">R</div>
+          <div>
+            <div class="account-menu-name" id="accountMenuName">Hesap</div>
+            <div class="account-menu-email" id="accountMenuEmail"></div>
+          </div>
         </div>
-        <button class="logout-btn" type="button" onclick="logoutAccount()">Çıkış yap</button>
+        <div class="account-role-badges" id="accountRoleBadges"></div>
+        <div class="account-verify-state" id="accountVerifyState">E-posta doğrulaması bekliyor</div>
+        <div class="account-menu-actions">
+          <button class="account-menu-btn" type="button" onclick="openProfileSettings()">⚙ Ayarlar</button>
+          <button class="account-menu-btn" id="adminToolsMenuBtn" type="button" onclick="openAdminTools()" style="display:none">✦ Admin Araçları</button>
+          <button class="account-menu-btn danger" type="button" onclick="logoutAccount()">Çıkış yap</button>
+        </div>
       </div>
     </div>
   </nav>
@@ -7817,6 +8226,70 @@ body::after {
   </div>
 </div>
 
+<div class="profile-settings-overlay" id="profileSettingsOverlay" onclick="if(event.target===this)closeProfileSettings()">
+  <div class="profile-settings-panel">
+    <div class="profile-settings-head">
+      <div>
+        <div class="profile-settings-kicker">Hesap</div>
+        <div class="profile-settings-title">Profil ayarları</div>
+      </div>
+      <button class="cfg-close-btn" type="button" onclick="closeProfileSettings()">&#x2715;</button>
+    </div>
+    <div class="profile-settings-grid">
+      <div class="profile-photo-card">
+        <div class="profile-photo-preview" id="profilePhotoPreview">R</div>
+        <input class="profile-photo-input" id="profilePhotoInput" type="file" accept="image/png,image/jpeg,image/webp" onchange="handleProfilePhotoChange(event)">
+        <button class="account-menu-btn" type="button" onclick="document.getElementById('profilePhotoInput').click()">Fotoğraf seç</button>
+        <button class="account-menu-btn" type="button" onclick="clearProfilePhoto()">Kaldır</button>
+      </div>
+      <div class="settings-form">
+        <label class="settings-field">
+          <span class="settings-label">Görünen ad</span>
+          <input class="settings-input" id="settingsDisplayName" type="text" maxlength="40" placeholder="Görünen ad">
+        </label>
+        <label class="settings-field">
+          <span class="settings-label">E-posta</span>
+          <input class="settings-input" id="settingsEmail" type="email" maxlength="254" placeholder="eposta@example.com">
+        </label>
+        <label class="settings-field">
+          <span class="settings-label">Mevcut şifre</span>
+          <input class="settings-input" id="settingsCurrentPassword" type="password" autocomplete="current-password" placeholder="E-posta veya şifre değişimi için">
+        </label>
+        <label class="settings-field">
+          <span class="settings-label">Yeni şifre</span>
+          <input class="settings-input" id="settingsNewPassword" type="password" autocomplete="new-password" placeholder="Boş bırakılırsa değişmez">
+        </label>
+        <div class="verification-box" id="verificationBox">
+          <div class="verification-status" id="verificationStatus">E-posta doğrulaması bekliyor.</div>
+          <div class="verification-actions">
+            <input class="settings-input" id="verificationCodeInput" type="text" inputmode="numeric" maxlength="6" placeholder="6 haneli kod">
+            <button class="account-menu-btn" type="button" onclick="sendVerificationCode()">Kod gönder</button>
+            <button class="account-menu-btn" type="button" onclick="confirmVerificationCode()">Onayla</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="settings-actions">
+      <button class="btn btn-ghost" type="button" onclick="closeProfileSettings()">İptal</button>
+      <button class="btn btn-primary" type="button" onclick="saveProfileSettings()">Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<div class="admin-tools-overlay" id="adminToolsOverlay" onclick="if(event.target===this)closeAdminTools()">
+  <div class="admin-tools-panel">
+    <div class="admin-tools-head">
+      <div>
+        <div class="admin-tools-kicker">Admin</div>
+        <div class="admin-tools-title">Hesap ve güvenlik araçları</div>
+      </div>
+      <button class="cfg-close-btn" type="button" onclick="closeAdminTools()">&#x2715;</button>
+    </div>
+    <div class="admin-stats" id="adminStats"></div>
+    <div class="admin-account-list" id="adminAccountsList"></div>
+  </div>
+</div>
+
 <div id="toastContainer"></div>
 
 <!-- Auth Modal -->
@@ -7881,6 +8354,7 @@ let _turnstileWidgetId = null;
 let _turnstileToken = '';
 let _turnstileReady = false;
 let _appStarted = false;
+let _pendingProfileAvatarDataUrl = '';
 let _chatStore = { chats: [] };
 let _chatStoreLoaded = false;
 let _chatStoreLoadPromise = null;
@@ -8146,7 +8620,16 @@ async function submitAccountAuth(event) {
     _chatStore = { chats: [] };
     await startApp();
     hideLoadingOverlay(true);
-    showToast('success', 'Hoş geldin', 'ReylAI hesabın hazır.', 2800);
+    if (_accountAuthMode === 'signup' && _accountUser && !_accountUser.email_verified) {
+      if (data.email_delivery_configured === false) {
+        showToast('warning', 'E-posta servisi bekliyor', 'Hesabın açıldı; doğrulama e-postası Cloudflare Email bağlanınca gönderilecek.', 6500);
+      } else {
+        showToast('warning', 'E-postanı doğrula', 'Ayarlar panelinden no-reply kodunu onayla.', 6200);
+        setTimeout(function(){ openProfileSettings(); }, 850);
+      }
+    } else {
+      showToast('success', 'Hoş geldin', 'ReylAI hesabın hazır.', 2800);
+    }
   } catch(e) {
     hideLoadingOverlay(false);
     showAccountAuth();
@@ -8210,6 +8693,296 @@ async function saveAccountProfile() {
     showToast('success', 'Profil güncellendi', 'Görünen ad kaydedildi.', 2600);
   } catch(e) {
     showToast('error', 'Profil Kaydedilemedi', e.message || 'Bağlantı hatası.', 4500);
+  }
+}
+
+function accountIsAdmin() {
+  return !!(_accountUser && (_accountUser.is_admin || _accountUser.role === 'admin'));
+}
+
+function accountInitial(user) {
+  const name = (user && (user.display_name || user.email)) || 'R';
+  return String(name).trim().charAt(0).toUpperCase() || 'R';
+}
+
+function setAccountAvatarElement(el, user, sizeClass) {
+  if (!el) return;
+  const avatar = user && user.avatar_data_url;
+  el.textContent = avatar ? '' : accountInitial(user);
+  el.style.backgroundImage = avatar ? 'url("' + avatar.replace(/"/g, '%22') + '")' : '';
+}
+
+function roleIconText(icon) {
+  if (icon === 'shield') return '◆';
+  if (icon === 'sparkles') return '✦';
+  return '●';
+}
+
+function renderAccountBadges(roles) {
+  roles = Array.isArray(roles) && roles.length ? roles : [{ label: 'Member', icon: 'user' }];
+  return roles.map(function(role) {
+    const label = String(role.label || 'Member');
+    const cls = label.toLowerCase() === 'admin' ? ' admin' : (label.toLowerCase() === 'staff' ? ' staff' : '');
+    return '<span class="account-role-badge' + cls + '">' + roleIconText(role.icon) + ' ' + escHtml(label) + '</span>';
+  }).join('');
+}
+
+updateAccountUI = function() {
+  const user = _accountUser || {};
+  const name = user.display_name || 'Hesap';
+  const email = user.email || '';
+  const chip = document.getElementById('accountChip');
+  const avatar = document.getElementById('accountAvatar');
+  const menuAvatar = document.getElementById('accountMenuAvatar');
+  const chipName = document.getElementById('accountChipName');
+  const chipRole = document.getElementById('accountChipRole');
+  const menuName = document.getElementById('accountMenuName');
+  const menuEmail = document.getElementById('accountMenuEmail');
+  const badges = document.getElementById('accountRoleBadges');
+  const verify = document.getElementById('accountVerifyState');
+  const adminBtn = document.getElementById('adminToolsMenuBtn');
+  if (chip) chip.classList.toggle('visible', !!_accountUser);
+  setAccountAvatarElement(avatar, user);
+  setAccountAvatarElement(menuAvatar, user);
+  if (chipName) chipName.textContent = name;
+  if (menuName) menuName.textContent = name;
+  if (menuEmail) menuEmail.textContent = email;
+  if (badges) badges.innerHTML = renderAccountBadges(user.roles);
+  if (chipRole) {
+    const admin = accountIsAdmin();
+    chipRole.textContent = admin ? 'Admin' : '';
+    chipRole.classList.toggle('visible', admin);
+  }
+  if (adminBtn) adminBtn.style.display = accountIsAdmin() ? 'inline-flex' : 'none';
+  if (verify) {
+    const ok = !!user.email_verified;
+    verify.classList.toggle('verified', ok);
+    verify.textContent = ok ? '✓ E-posta doğrulandı' : 'E-posta doğrulaması bekliyor';
+  }
+  updateVerificationPanel();
+};
+
+saveAccountProfile = async function() {
+  openProfileSettings();
+};
+
+function openProfileSettings() {
+  if (!_accountUser) return;
+  closeAccountMenu();
+  _pendingProfileAvatarDataUrl = _accountUser.avatar_data_url || '';
+  const name = document.getElementById('settingsDisplayName');
+  const email = document.getElementById('settingsEmail');
+  const current = document.getElementById('settingsCurrentPassword');
+  const next = document.getElementById('settingsNewPassword');
+  const code = document.getElementById('verificationCodeInput');
+  if (name) name.value = _accountUser.display_name || '';
+  if (email) email.value = _accountUser.email || '';
+  if (current) current.value = '';
+  if (next) next.value = '';
+  if (code) code.value = '';
+  updateProfilePhotoPreview();
+  updateVerificationPanel();
+  document.getElementById('profileSettingsOverlay').classList.add('active');
+}
+
+function closeProfileSettings() {
+  const overlay = document.getElementById('profileSettingsOverlay');
+  if (overlay) overlay.classList.remove('active');
+}
+
+function updateProfilePhotoPreview() {
+  const preview = document.getElementById('profilePhotoPreview');
+  if (!preview) return;
+  const user = Object.assign({}, _accountUser || {}, { avatar_data_url: _pendingProfileAvatarDataUrl });
+  setAccountAvatarElement(preview, user);
+}
+
+function updateVerificationPanel() {
+  const box = document.getElementById('verificationBox');
+  const status = document.getElementById('verificationStatus');
+  if (!box || !status || !_accountUser) return;
+  const ok = !!_accountUser.email_verified;
+  box.classList.toggle('verified', ok);
+  status.textContent = ok
+    ? 'E-posta adresin doğrulandı. Hesap güvenliği tamam.'
+    : 'E-posta doğrulaması bekliyor. Kod gönderip gelen 6 haneli güvenlik kodunu gir.';
+}
+
+function handleProfilePhotoChange(event) {
+  const file = event && event.target && event.target.files ? event.target.files[0] : null;
+  if (!file) return;
+  if (!/^image\/(png|jpeg|webp)$/i.test(file.type || '')) {
+    showToast('warning', 'Görsel desteklenmiyor', 'PNG, JPG veya WebP formatında bir profil fotoğrafı seç.', 4200);
+    return;
+  }
+  if (file.size > 260 * 1024) {
+    showToast('warning', 'Fotoğraf büyük', 'Profil fotoğrafı 260 KB altında olmalı.', 4200);
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function() {
+    _pendingProfileAvatarDataUrl = String(reader.result || '');
+    updateProfilePhotoPreview();
+  };
+  reader.onerror = function() {
+    showToast('error', 'Fotoğraf okunamadı', 'Görsel dosyasını tekrar seç.', 4200);
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearProfilePhoto() {
+  _pendingProfileAvatarDataUrl = '';
+  const input = document.getElementById('profilePhotoInput');
+  if (input) input.value = '';
+  updateProfilePhotoPreview();
+}
+
+async function saveProfileSettings() {
+  if (!_accountUser) return;
+  const displayName = (document.getElementById('settingsDisplayName') || {}).value || '';
+  const email = (document.getElementById('settingsEmail') || {}).value || '';
+  const currentPassword = (document.getElementById('settingsCurrentPassword') || {}).value || '';
+  const newPassword = (document.getElementById('settingsNewPassword') || {}).value || '';
+  const payload = {
+    display_name: displayName.trim(),
+    email: email.trim(),
+    avatar_data_url: _pendingProfileAvatarDataUrl || ''
+  };
+  const changingEmail = payload.email.toLowerCase() !== String(_accountUser.email || '').toLowerCase();
+  if (changingEmail || newPassword) payload.current_password = currentPassword;
+  if (newPassword) payload.new_password = newPassword;
+  try {
+    const res = await apiFetch('/api/auth/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Profil kaydedilemedi.');
+    _accountUser = data.user;
+    _pendingProfileAvatarDataUrl = _accountUser.avatar_data_url || '';
+    updateAccountUI();
+    closeProfileSettings();
+    if (data.email_delivery_configured === false) {
+      showToast('warning', 'E-posta servisi bağlı değil', 'Profil kaydedildi; doğrulama e-postası Cloudflare Email bağlanınca gönderilecek.', 6200);
+    } else if (changingEmail && !_accountUser.email_verified) {
+      showToast('warning', 'E-postanı doğrula', 'Yeni adresine gelen 6 haneli kodu ayarlardan onayla.', 6200);
+    } else {
+      showToast('success', 'Profil güncellendi', 'Hesap ayarların kaydedildi.', 3000);
+    }
+  } catch(e) {
+    showToast('error', 'Profil kaydedilemedi', e.message || 'Bağlantı hatası.', 5200);
+  }
+}
+
+async function sendVerificationCode() {
+  try {
+    const res = await apiFetch('/api/auth/verification/send', { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Kod gönderilemedi.');
+    showToast('success', 'Kod gönderildi', 'No-reply adresinden gelen 6 haneli kodu gir.', 5200);
+  } catch(e) {
+    showToast('warning', 'Kod gönderilemedi', e.message || 'E-posta servisi bağlı değil.', 5600);
+  }
+}
+
+async function confirmVerificationCode() {
+  const input = document.getElementById('verificationCodeInput');
+  const code = input ? input.value.trim() : '';
+  if (!/^\d{6}$/.test(code)) {
+    showToast('warning', 'Kod eksik', '6 haneli güvenlik kodunu gir.', 3200);
+    return;
+  }
+  try {
+    const res = await apiFetch('/api/auth/verification/confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: code })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Doğrulama tamamlanamadı.');
+    _accountUser = data.user || _accountUser;
+    updateAccountUI();
+    showToast('success', 'E-posta doğrulandı', 'Hesabın güvenlik doğrulaması tamamlandı.', 3600);
+  } catch(e) {
+    showToast('error', 'Doğrulanamadı', e.message || 'Kod hatalı.', 4600);
+  }
+}
+
+function openAdminTools() {
+  if (!accountIsAdmin()) {
+    showToast('warning', 'Yönetici hesabı gerekli', 'Bu işlem sadece yönetici hesabı ile yapılabilir.', 4500);
+    return;
+  }
+  closeAccountMenu();
+  const overlay = document.getElementById('adminToolsOverlay');
+  if (overlay) overlay.classList.add('active');
+  renderAdminTools({ loading: true });
+  loadAdminTools();
+}
+
+function closeAdminTools() {
+  const overlay = document.getElementById('adminToolsOverlay');
+  if (overlay) overlay.classList.remove('active');
+}
+
+async function loadAdminTools() {
+  try {
+    const res = await apiFetch('/api/admin/accounts', { cache: 'no-store' });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Admin araçları yüklenemedi.');
+    renderAdminTools(data);
+  } catch(e) {
+    renderAdminTools({ error: e.message || 'Bağlantı hatası.' });
+  }
+}
+
+function renderAdminTools(data) {
+  const statsEl = document.getElementById('adminStats');
+  const listEl = document.getElementById('adminAccountsList');
+  if (!statsEl || !listEl) return;
+  if (data && data.loading) {
+    statsEl.innerHTML = '<div class="admin-stat"><div class="admin-stat-value">...</div><div class="admin-stat-label">Yükleniyor</div></div>';
+    listEl.innerHTML = '';
+    return;
+  }
+  if (data && data.error) {
+    statsEl.innerHTML = '';
+    listEl.innerHTML = '<div class="admin-account-row"><div class="admin-account-main"><div class="admin-account-name">Admin araçları açılamadı</div><div class="admin-account-meta">' + escHtml(data.error) + '</div></div></div>';
+    return;
+  }
+  const stats = data.stats || {};
+  const statItems = [
+    ['Toplam hesap', stats.total_accounts || 0],
+    ['Doğrulanmış', stats.verified_accounts || 0],
+    ['Aktif oturum', stats.active_sessions || 0],
+    ['Admin', stats.admin_accounts || 0]
+  ];
+  statsEl.innerHTML = statItems.map(function(item) {
+    return '<div class="admin-stat"><div class="admin-stat-value">' + escHtml(item[1]) + '</div><div class="admin-stat-label">' + escHtml(item[0]) + '</div></div>';
+  }).join('');
+  const accounts = Array.isArray(data.accounts) ? data.accounts : [];
+  listEl.innerHTML = accounts.map(function(account) {
+    const roles = renderAccountBadges(account.roles).replace(/account-role-badge/g, 'admin-mini-badge');
+    const verified = account.email_verified ? '<span class="admin-mini-badge good">Doğrulandı</span>' : '<span class="admin-mini-badge warn">Doğrulanmadı</span>';
+    const lastLogin = account.last_login_at ? formatAdminDate(account.last_login_at) : 'Yok';
+    const lastSeen = account.last_seen_at ? formatAdminDate(account.last_seen_at) : 'Yok';
+    const ip = account.last_login_ip || account.session_ip || 'Bilinmiyor';
+    return '<div class="admin-account-row">' +
+      '<div class="admin-account-main">' +
+        '<div class="admin-account-name">' + escHtml(account.display_name || 'Hesap') + '</div>' +
+        '<div class="admin-account-meta">' + escHtml(account.email || '') + '<br>IP: ' + escHtml(ip) + ' · Son giriş: ' + escHtml(lastLogin) + ' · Son görülme: ' + escHtml(lastSeen) + '</div>' +
+      '</div>' +
+      '<div class="admin-account-flags">' + roles + verified + '<span class="admin-mini-badge">' + escHtml(account.session_count || 0) + ' oturum</span></div>' +
+    '</div>';
+  }).join('') || '<div class="admin-account-row"><div class="admin-account-main"><div class="admin-account-name">Hesap yok</div><div class="admin-account-meta">Henüz listelenecek kullanıcı bulunamadı.</div></div></div>';
+}
+
+function formatAdminDate(value) {
+  try {
+    return new Date(value).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' });
+  } catch(e) {
+    return String(value || '');
   }
 }
 
@@ -8524,6 +9297,10 @@ function isAdminAuthed() { return !!getAdminAuthToken(); }
 var _authCallback = null;
 var _authSubmitting = false;
 function requireAuth(callback) {
+  if (!accountIsAdmin()) {
+    showToast('warning', 'Yönetici hesabı gerekli', 'Bu işlem sadece yönetici hesabı ile yapılabilir.', 4500);
+    return;
+  }
   if (isAdminAuthed()) { callback(); return; }
   _abortPrefetches();
   _authCallback = callback;
@@ -8559,11 +9336,11 @@ async function submitAuth() {
   try {
     var res = await fetch('/api/verify_password', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
       body: JSON.stringify({ password: pw })
     });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
     var data = await res.json();
+    if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
     if (data.success && data.token) {
       sessionStorage.setItem('admin_auth_token', data.token);
       var cb = _authCallback;
@@ -8575,13 +9352,16 @@ async function submitAuth() {
       setTimeout(function(){ inp.classList.remove('shake'); }, 500);
     }
   } catch(e) {
-    errEl.textContent = 'Ba\u011flant\u0131 hatas\u0131.';
+    errEl.textContent = e.message || 'Ba\u011flant\u0131 hatas\u0131.';
   } finally {
     _authSubmitting = false;
   }
 }
 function authHeaders() {
-  return { 'X-Auth-Token': getAdminAuthToken() };
+  var headers = { 'X-Auth-Token': getAdminAuthToken() };
+  var token = getAppAuthToken();
+  if (token) headers.Authorization = 'Bearer ' + token;
+  return headers;
 }
 function authFormHeaders() {
   return getAdminAuthToken();
@@ -12057,6 +12837,8 @@ document.addEventListener('keydown', function(e) {
   var pdfActive = document.getElementById('pdfViewerOverlay').classList.contains('active');
   if (e.key === 'Escape') {
     if (document.getElementById('accountMenu') && document.getElementById('accountMenu').classList.contains('active')) { closeAccountMenu(); }
+    else if (document.getElementById('profileSettingsOverlay') && document.getElementById('profileSettingsOverlay').classList.contains('active')) { closeProfileSettings(); }
+    else if (document.getElementById('adminToolsOverlay') && document.getElementById('adminToolsOverlay').classList.contains('active')) { closeAdminTools(); }
     else if (_activeAnalyzeController) { stopCurrentAnalysis(); }
     else if (pdfActive) { closePdfViewer(); }
     else { hideDelConfirm(); }

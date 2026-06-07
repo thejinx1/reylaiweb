@@ -21,6 +21,11 @@ const MAX_CHAT_HISTORY_MESSAGES = 120;
 const MAX_CHAT_HISTORY_TEXT_CHARS = 12000;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const BOOK_ARCHIVE_PDF_RE = /(?:href|data-name)=["'](?:\.\/)?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.pdf["']/gi;
+const ADMIN_EMAIL = "mynamesreyli@gmail.com";
+const VERIFY_CODE_TTL_MINUTES = 10;
+const VERIFY_CODE_COOLDOWN_SECONDS = 60;
+const AVATAR_DATA_URL_LIMIT = 360_000;
+const NO_REPLY_FROM = "no-reply@reyliar.xyz";
 
 type Book = {
   book_id?: string;
@@ -75,6 +80,15 @@ type UserRow = {
   password_hash: string;
   created_at: string;
   updated_at: string;
+  role?: string | null;
+  avatar_data_url?: string | null;
+  email_verified_at?: string | null;
+  last_login_ip?: string | null;
+  last_login_at?: string | null;
+  password_updated_at?: string | null;
+  email_verification_code_hash?: string | null;
+  email_verification_expires_at?: string | null;
+  email_verification_sent_at?: string | null;
 };
 
 type PublicUser = {
@@ -82,6 +96,12 @@ type PublicUser = {
   email: string;
   display_name: string;
   created_at: string;
+  role: string;
+  roles: Array<{ label: string; icon: string }>;
+  is_admin: boolean;
+  email_verified: boolean;
+  email_verified_at: string;
+  avatar_data_url: string;
 };
 
 type AuthPayload = {
@@ -90,6 +110,18 @@ type AuthPayload = {
   display_name?: string;
   remember_device?: boolean;
   turnstile_token?: string;
+};
+
+type ProfilePayload = {
+  display_name?: string;
+  email?: string;
+  current_password?: string;
+  new_password?: string;
+  avatar_data_url?: string;
+};
+
+type VerificationPayload = {
+  code?: string;
 };
 
 type AuthContext = {
@@ -107,6 +139,28 @@ type TurnstileResponse = {
   action?: string;
   "error-codes"?: string[];
 };
+
+type EmailBinding = {
+  send: (message: Record<string, unknown>) => Promise<unknown>;
+};
+
+const USER_SELECT_COLUMNS = [
+  "id",
+  "email",
+  "display_name",
+  "password_hash",
+  "created_at",
+  "updated_at",
+  "role",
+  "avatar_data_url",
+  "email_verified_at",
+  "last_login_ip",
+  "last_login_at",
+  "password_updated_at",
+  "email_verification_code_hash",
+  "email_verification_expires_at",
+  "email_verification_sent_at"
+].join(", ");
 
 export default {
   async fetch(request, env): Promise<Response> {
@@ -162,6 +216,18 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
 
   if (path === "/api/auth/profile" && request.method === "PATCH") {
     return handleProfileUpdate(request, env);
+  }
+
+  if (path === "/api/auth/verification/send" && request.method === "POST") {
+    return handleVerificationSend(request, env);
+  }
+
+  if (path === "/api/auth/verification/confirm" && request.method === "POST") {
+    return handleVerificationConfirm(request, env);
+  }
+
+  if (path === "/api/admin/accounts" && request.method === "GET") {
+    return handleAdminAccounts(request, env);
   }
 
   if (request.method === "GET" && path === "/api/library") {
@@ -262,7 +328,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
   }
 
   if (request.method === "POST" && path === "/api/verify_password") {
-    return json({ success: false, error: "Statik yayında yönetim işlemleri kapalı." }, 403);
+    return handleAdminPasswordVerify(request, env);
   }
 
   return json({ error: "API endpoint bulunamadı." }, 404);
@@ -293,11 +359,14 @@ async function handleSignup(request: Request, env: Env): Promise<Response> {
   const now = new Date().toISOString();
   const userId = crypto.randomUUID();
   const passwordHash = await hashPassword(password);
+  const role = roleForEmail(email);
+  const ipAddress = clientIp(request);
 
   try {
     await env.DB.prepare(
-      "INSERT INTO users (id, email, display_name, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
-    ).bind(userId, email, displayName, passwordHash, now, now).run();
+      "INSERT INTO users (id, email, display_name, password_hash, created_at, updated_at, role, last_login_ip, last_login_at, password_updated_at) " +
+      "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    ).bind(userId, email, displayName, passwordHash, now, now, role, ipAddress, now, now).run();
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (message.toLowerCase().includes("unique")) {
@@ -308,8 +377,15 @@ async function handleSignup(request: Request, env: Env): Promise<Response> {
 
   const user = await getUserById(env, userId);
   if (!user) return json({ success: false, error: "Hesap oluşturuldu ama oturum açılamadı." }, 500);
+  const delivery = await sendVerificationCode(env, user);
   const session = await createSession(request, env, user, payload.remember_device !== false);
-  return json({ success: true, token: session.token, user: publicUser(user) }, 201);
+  return json({
+    success: true,
+    token: session.token,
+    user: publicUser(user),
+    verification_email_sent: delivery.sent,
+    email_delivery_configured: delivery.configured
+  }, 201);
 }
 
 async function handleLogin(request: Request, env: Env): Promise<Response> {
@@ -328,8 +404,13 @@ async function handleLogin(request: Request, env: Env): Promise<Response> {
     return json({ success: false, error: "E-posta veya şifre hatalı." }, 401);
   }
 
-  const session = await createSession(request, env, user, payload.remember_device !== false);
-  return json({ success: true, token: session.token, user: publicUser(user) });
+  const now = new Date().toISOString();
+  await env.DB.prepare("UPDATE users SET last_login_ip = ?, last_login_at = ?, role = ?, updated_at = ? WHERE id = ?")
+    .bind(clientIp(request), now, roleForEmail(user.email), now, user.id)
+    .run();
+  const freshUser = await getUserById(env, user.id) || user;
+  const session = await createSession(request, env, freshUser, payload.remember_device !== false);
+  return json({ success: true, token: session.token, user: publicUser(freshUser) });
 }
 
 async function handleLogout(request: Request, env: Env): Promise<Response> {
@@ -344,6 +425,95 @@ async function handleLogout(request: Request, env: Env): Promise<Response> {
 async function handleProfileUpdate(request: Request, env: Env): Promise<Response> {
   const auth = await requireAuth(request, env);
   if (auth instanceof Response) return auth;
+  {
+    const payload = await readJson<ProfilePayload>(request);
+    const user = await getUserById(env, auth.user.id);
+    if (!user) return json({ success: false, error: "Hesap bulunamadı." }, 404);
+
+    const updates: string[] = [];
+    const values: unknown[] = [];
+    const now = new Date().toISOString();
+    let shouldSendVerification = false;
+
+    if (Object.prototype.hasOwnProperty.call(payload, "display_name")) {
+      const displayName = normalizeDisplayName(payload.display_name || "");
+      if (!displayName || displayName.length < 2 || displayName.length > 40) {
+        return json({ success: false, error: "Görünen ad 2-40 karakter olmalı." }, 400);
+      }
+      updates.push("display_name = ?");
+      values.push(displayName);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(payload, "avatar_data_url")) {
+      const avatarError = validateAvatarDataUrl(payload.avatar_data_url || "");
+      if (avatarError) return json({ success: false, error: avatarError }, 400);
+      updates.push("avatar_data_url = ?");
+      values.push(String(payload.avatar_data_url || "").trim() || null);
+    }
+
+    const requestedEmail = Object.prototype.hasOwnProperty.call(payload, "email") ? normalizeEmail(payload.email || "") : "";
+    const requestedPassword = Object.prototype.hasOwnProperty.call(payload, "new_password") ? String(payload.new_password || "") : "";
+    const changingEmail = Boolean(requestedEmail && requestedEmail !== user.email);
+    const changingPassword = Boolean(requestedPassword);
+
+    if (changingEmail || changingPassword) {
+      const currentPassword = String(payload.current_password || "");
+      if (!currentPassword || !await verifyPassword(currentPassword, user.password_hash)) {
+        return json({ success: false, error: "Mevcut şifre doğrulanamadı." }, 401);
+      }
+    }
+
+    if (changingEmail) {
+      if (!EMAIL_RE.test(requestedEmail) || requestedEmail.length > 254) {
+        return json({ success: false, error: "Geçerli bir e-posta girin." }, 400);
+      }
+      updates.push(
+        "email = ?",
+        "role = ?",
+        "email_verified_at = NULL",
+        "email_verification_code_hash = NULL",
+        "email_verification_expires_at = NULL",
+        "email_verification_sent_at = NULL"
+      );
+      values.push(requestedEmail, roleForEmail(requestedEmail));
+      shouldSendVerification = true;
+    }
+
+    if (changingPassword) {
+      if (requestedPassword.length < 8 || requestedPassword.length > 128) {
+        return json({ success: false, error: "Şifre 8-128 karakter olmalı." }, 400);
+      }
+      updates.push("password_hash = ?", "password_updated_at = ?");
+      values.push(await hashPassword(requestedPassword), now);
+    }
+
+    if (!updates.length) {
+      return json({ success: true, user: publicUser(user) });
+    }
+
+    updates.push("updated_at = ?");
+    values.push(now, auth.user.id);
+
+    try {
+      await env.DB.prepare(`UPDATE users SET ${updates.join(", ")} WHERE id = ?`).bind(...values).run();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.toLowerCase().includes("unique")) {
+        return json({ success: false, error: "Bu e-posta başka bir hesapta kullanılıyor." }, 409);
+      }
+      throw error;
+    }
+
+    const freshUser = await getUserById(env, auth.user.id);
+    const delivery = shouldSendVerification && freshUser ? await sendVerificationCode(env, freshUser) : null;
+    return json({
+      success: true,
+      user: freshUser ? publicUser(freshUser) : auth.user,
+      verification_email_sent: delivery?.sent || false,
+      email_delivery_configured: delivery ? delivery.configured : undefined
+    });
+  }
+  const authCtx = auth as AuthContext;
   const payload = await readJson<{ display_name?: string }>(request);
   const displayName = normalizeDisplayName(payload.display_name || "");
   if (!displayName || displayName.length < 2 || displayName.length > 40) {
@@ -351,10 +521,130 @@ async function handleProfileUpdate(request: Request, env: Env): Promise<Response
   }
   const now = new Date().toISOString();
   await env.DB.prepare("UPDATE users SET display_name = ?, updated_at = ? WHERE id = ?")
-    .bind(displayName, now, auth.user.id)
+    .bind(displayName, now, authCtx.user.id)
     .run();
+  const user = await getUserById(env, authCtx.user.id);
+  if (user !== null) return json({ success: true, user: publicUser(user as UserRow) });
+  return json({ success: true, user: { ...authCtx.user, display_name: displayName } });
+}
+
+async function handleVerificationSend(request: Request, env: Env): Promise<Response> {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
   const user = await getUserById(env, auth.user.id);
-  return json({ success: true, user: user ? publicUser(user) : { ...auth.user, display_name: displayName } });
+  if (!user) return json({ success: false, error: "Hesap bulunamadı." }, 404);
+  if (user.email_verified_at) {
+    return json({ success: true, already_verified: true, user: publicUser(user) });
+  }
+
+  const sentAt = user.email_verification_sent_at ? Date.parse(user.email_verification_sent_at) : 0;
+  const waitMs = sentAt ? VERIFY_CODE_COOLDOWN_SECONDS * 1000 - (Date.now() - sentAt) : 0;
+  if (waitMs > 0) {
+    return json({
+      success: false,
+      error: `Yeni kod için ${Math.ceil(waitMs / 1000)} saniye bekleyin.`,
+      retry_after: Math.ceil(waitMs / 1000)
+    }, 429);
+  }
+
+  const delivery = await sendVerificationCode(env, user);
+  return json({
+    success: delivery.sent,
+    email_delivery_configured: delivery.configured,
+    error: delivery.sent ? undefined : delivery.error || "E-posta gönderilemedi."
+  }, delivery.sent ? 200 : 503);
+}
+
+async function handleVerificationConfirm(request: Request, env: Env): Promise<Response> {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
+  const payload = await readJson<VerificationPayload>(request);
+  const code = String(payload.code || "").replace(/\D+/g, "").slice(0, 12);
+  if (code.length !== 6) return json({ success: false, error: "6 haneli kodu girin." }, 400);
+
+  const user = await getUserById(env, auth.user.id);
+  if (!user) return json({ success: false, error: "Hesap bulunamadı." }, 404);
+  if (user.email_verified_at) return json({ success: true, already_verified: true, user: publicUser(user) });
+  if (!user.email_verification_code_hash || !user.email_verification_expires_at) {
+    return json({ success: false, error: "Önce yeni bir doğrulama kodu isteyin." }, 400);
+  }
+  if (Date.parse(user.email_verification_expires_at) <= Date.now()) {
+    return json({ success: false, error: "Kodun süresi doldu. Yeni kod isteyin." }, 400);
+  }
+
+  const expected = await verificationHash(user.id, user.email, code);
+  if (expected !== user.email_verification_code_hash) {
+    return json({ success: false, error: "Doğrulama kodu hatalı." }, 400);
+  }
+
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    "UPDATE users SET email_verified_at = ?, email_verification_code_hash = NULL, email_verification_expires_at = NULL, email_verification_sent_at = NULL, updated_at = ? WHERE id = ?"
+  ).bind(now, now, user.id).run();
+  const freshUser = await getUserById(env, user.id);
+  return json({ success: true, user: freshUser ? publicUser(freshUser) : auth.user });
+}
+
+async function handleAdminPasswordVerify(request: Request, env: Env): Promise<Response> {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
+  if (!auth.user.is_admin) {
+    return json({ success: false, auth: false, error: "Bu işlem sadece yönetici hesabı ile yapılabilir." }, 403);
+  }
+
+  const payload = await readJson<{ password?: string }>(request);
+  const password = String(payload.password || "");
+  const user = await getUserById(env, auth.user.id);
+  if (!user || !password || !await verifyPassword(password, user.password_hash)) {
+    return json({ success: false, error: "Yönetici şifresi hatalı." }, 401);
+  }
+  return json({ success: true, token: randomToken(16) });
+}
+
+async function handleAdminAccounts(request: Request, env: Env): Promise<Response> {
+  const admin = await requireAdmin(request, env);
+  if (admin instanceof Response) return admin;
+
+  const rows = await env.DB.prepare(
+    "SELECT u.id, u.email, u.display_name, u.role, u.avatar_data_url, u.email_verified_at, u.created_at, u.updated_at, " +
+    "u.last_login_ip, u.last_login_at, u.password_updated_at, " +
+    "COUNT(s.id) AS session_count, MAX(s.last_seen_at) AS last_seen_at, MAX(s.ip_address) AS session_ip " +
+    "FROM users u LEFT JOIN sessions s ON s.user_id = u.id AND s.expires_at > ? " +
+    "GROUP BY u.id ORDER BY u.created_at DESC LIMIT 200"
+  ).bind(new Date().toISOString()).all<Record<string, unknown>>();
+
+  const accounts = (rows.results || []).map((row) => ({
+    id: String(row.id || ""),
+    email: String(row.email || ""),
+    display_name: String(row.display_name || ""),
+    role: String(row.role || roleForEmail(String(row.email || ""))),
+    roles: roleBadgesForEmail(String(row.email || ""), String(row.role || "")),
+    avatar_data_url: String(row.avatar_data_url || ""),
+    email_verified: Boolean(row.email_verified_at),
+    email_verified_at: String(row.email_verified_at || ""),
+    created_at: String(row.created_at || ""),
+    updated_at: String(row.updated_at || ""),
+    last_login_ip: String(row.last_login_ip || ""),
+    last_login_at: String(row.last_login_at || ""),
+    password_updated_at: String(row.password_updated_at || ""),
+    session_count: Number(row.session_count || 0),
+    last_seen_at: String(row.last_seen_at || ""),
+    session_ip: String(row.session_ip || "")
+  }));
+
+  const verified = accounts.filter((account) => account.email_verified).length;
+  const admins = accounts.filter((account) => account.role === "admin").length;
+  return json({
+    success: true,
+    stats: {
+      total_accounts: accounts.length,
+      verified_accounts: verified,
+      unverified_accounts: accounts.length - verified,
+      admin_accounts: admins,
+      active_sessions: accounts.reduce((sum, account) => sum + account.session_count, 0)
+    },
+    accounts
+  });
 }
 
 async function handleChatHistoryGet(env: Env, userId: string): Promise<Response> {
@@ -401,7 +691,7 @@ async function requireAuth(request: Request, env: Env): Promise<AuthContext | Re
   const tokenHash = await sha256Base64Url(token);
   const now = new Date().toISOString();
   const row = await env.DB.prepare(
-    "SELECT u.id, u.email, u.display_name, u.password_hash, u.created_at, u.updated_at " +
+    `SELECT ${USER_SELECT_COLUMNS.split(", ").map((column) => `u.${column}`).join(", ")} ` +
     "FROM sessions s JOIN users u ON u.id = s.user_id " +
     "WHERE s.token_hash = ? AND s.expires_at > ?"
   ).bind(tokenHash, now).first<UserRow>();
@@ -426,7 +716,7 @@ async function createSession(
   const nowDate = new Date();
   const expiresDate = new Date(nowDate.getTime() + (rememberDevice ? SESSION_LONG_DAYS * 24 : SESSION_SHORT_HOURS) * 60 * 60 * 1000);
   await env.DB.prepare(
-    "INSERT INTO sessions (id, user_id, token_hash, created_at, expires_at, last_seen_at, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO sessions (id, user_id, token_hash, created_at, expires_at, last_seen_at, user_agent, ip_address) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
   ).bind(
     crypto.randomUUID(),
     user.id,
@@ -434,7 +724,8 @@ async function createSession(
     nowDate.toISOString(),
     expiresDate.toISOString(),
     nowDate.toISOString(),
-    (request.headers.get("user-agent") || "").slice(0, 240)
+    (request.headers.get("user-agent") || "").slice(0, 240),
+    clientIp(request)
   ).run();
   return { token };
 }
@@ -484,23 +775,170 @@ async function verifyTurnstile(request: Request, env: Env, tokenValue: unknown):
 
 async function getUserByEmail(env: Env, email: string): Promise<UserRow | null> {
   return await env.DB.prepare(
-    "SELECT id, email, display_name, password_hash, created_at, updated_at FROM users WHERE email = ?"
+    `SELECT ${USER_SELECT_COLUMNS} FROM users WHERE email = ?`
   ).bind(email).first<UserRow>();
 }
 
 async function getUserById(env: Env, id: string): Promise<UserRow | null> {
   return await env.DB.prepare(
-    "SELECT id, email, display_name, password_hash, created_at, updated_at FROM users WHERE id = ?"
+    `SELECT ${USER_SELECT_COLUMNS} FROM users WHERE id = ?`
   ).bind(id).first<UserRow>();
 }
 
 function publicUser(user: UserRow): PublicUser {
+  const role = user.role || roleForEmail(user.email);
   return {
     id: user.id,
     email: user.email,
     display_name: user.display_name,
-    created_at: user.created_at
+    created_at: user.created_at,
+    role,
+    roles: roleBadgesForEmail(user.email, role),
+    is_admin: role === "admin" || normalizeEmail(user.email) === ADMIN_EMAIL,
+    email_verified: Boolean(user.email_verified_at),
+    email_verified_at: user.email_verified_at || "",
+    avatar_data_url: user.avatar_data_url || ""
   };
+}
+
+async function requireAdmin(request: Request, env: Env): Promise<AuthContext | Response> {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
+  if (!auth.user.is_admin) {
+    return json({ success: false, auth: false, error: "Bu işlem sadece yönetici hesabı ile yapılabilir." }, 403);
+  }
+  return auth;
+}
+
+function roleForEmail(email: string): string {
+  return normalizeEmail(email) === ADMIN_EMAIL ? "admin" : "user";
+}
+
+function roleBadgesForEmail(email: string, roleValue = ""): Array<{ label: string; icon: string }> {
+  const role = roleValue || roleForEmail(email);
+  if (role === "admin" || normalizeEmail(email) === ADMIN_EMAIL) {
+    return [
+      { label: "Admin", icon: "shield" },
+      { label: "Staff", icon: "sparkles" }
+    ];
+  }
+  return [{ label: "Member", icon: "user" }];
+}
+
+function clientIp(request: Request): string {
+  return String(
+    request.headers.get("CF-Connecting-IP") ||
+    request.headers.get("x-forwarded-for")?.split(",")[0] ||
+    request.headers.get("x-real-ip") ||
+    ""
+  ).trim().slice(0, 80);
+}
+
+function validateAvatarDataUrl(value: string): string {
+  const avatar = String(value || "").trim();
+  if (!avatar) return "";
+  if (avatar.length > AVATAR_DATA_URL_LIMIT) return "Profil fotoğrafı çok büyük. Daha küçük bir görsel seçin.";
+  if (!/^data:image\/(?:png|jpeg|jpg|webp);base64,[a-z0-9+/=]+$/i.test(avatar)) {
+    return "Profil fotoğrafı PNG, JPG veya WEBP olmalı.";
+  }
+  return "";
+}
+
+async function sendVerificationCode(env: Env, user: UserRow): Promise<{ sent: boolean; configured: boolean; error?: string }> {
+  const binding = getEmailBinding(env);
+  if (!binding) {
+    return { sent: false, configured: false, error: "Cloudflare Email Sending henüz bağlı değil." };
+  }
+
+  const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, "0");
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + VERIFY_CODE_TTL_MINUTES * 60 * 1000).toISOString();
+  const codeHash = await verificationHash(user.id, user.email, code);
+
+  await env.DB.prepare(
+    "UPDATE users SET email_verification_code_hash = ?, email_verification_expires_at = ?, email_verification_sent_at = ?, updated_at = ? WHERE id = ?"
+  ).bind(codeHash, expiresAt, now.toISOString(), now.toISOString(), user.id).run();
+
+  try {
+    await binding.send({
+      to: user.email,
+      from: { email: NO_REPLY_FROM, name: "ReylAI" },
+      subject: "ReylAI doğrulama kodun",
+      html: verificationEmailHtml(user, code),
+      text: `ReylAI doğrulama kodun: ${code}. Kod ${VERIFY_CODE_TTL_MINUTES} dakika geçerlidir.`
+    });
+    return { sent: true, configured: true };
+  } catch (error) {
+    console.error(JSON.stringify({
+      level: "error",
+      message: "verification email failed",
+      detail: error instanceof Error ? error.message : String(error)
+    }));
+    return { sent: false, configured: true, error: "Doğrulama e-postası gönderilemedi." };
+  }
+}
+
+function getEmailBinding(env: Env): EmailBinding | null {
+  const value = (env as unknown as Record<string, unknown>).EMAIL;
+  return isRecord(value) && typeof value.send === "function" ? value as EmailBinding : null;
+}
+
+async function verificationHash(userId: string, email: string, code: string): Promise<string> {
+  return await sha256Base64Url(`${userId}:${normalizeEmail(email)}:${code}`);
+}
+
+function verificationEmailHtml(user: UserRow, code: string): string {
+  const name = escapeHtml(user.display_name || "ReylAI kullanıcısı");
+  const spacedCode = code.split("").join(" ");
+  return `<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>ReylAI doğrulama kodu</title>
+  </head>
+  <body style="margin:0;background:#080414;color:#f7f2ff;font-family:Inter,Segoe UI,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:radial-gradient(circle at 20% 0%,rgba(102,232,226,.24),transparent 32%),linear-gradient(135deg,#120725,#080414);padding:32px 14px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;border:1px solid rgba(255,255,255,.16);border-radius:28px;background:rgba(24,18,42,.82);box-shadow:0 30px 90px rgba(0,0,0,.38);overflow:hidden;">
+            <tr>
+              <td style="padding:28px 28px 18px;">
+                <div style="font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:#61f1e7;font-weight:900;">ReylAI Güvenlik</div>
+                <h1 style="margin:10px 0 8px;font-size:28px;line-height:1.1;color:#fff;">E-postanı doğrula</h1>
+                <p style="margin:0;color:#d9d2ea;font-size:15px;line-height:1.65;">Merhaba ${name}, hesabını güvene almak için bu kodu ReylAI ayarlarında kullan.</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:14px 28px;">
+                <div style="border:1px solid rgba(97,241,231,.26);border-radius:22px;background:linear-gradient(135deg,rgba(97,241,231,.18),rgba(157,109,255,.16));padding:24px;text-align:center;">
+                  <div style="font-size:12px;color:#bdb2d8;font-weight:800;text-transform:uppercase;letter-spacing:.16em;">Güvenlik kodu</div>
+                  <div style="margin-top:10px;font-size:36px;letter-spacing:.22em;font-weight:950;color:#ffffff;">${spacedCode}</div>
+                  <div style="margin-top:10px;color:#ffd44d;font-size:13px;font-weight:800;">${VERIFY_CODE_TTL_MINUTES} dakika geçerlidir.</div>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:10px 28px 30px;color:#a99ec1;font-size:13px;line-height:1.6;">
+                Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin. Şifreni kimseyle paylaşma.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+}
+
+function escapeHtml(value: string): string {
+  return String(value).replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[char] || char));
 }
 
 function normalizeEmail(email: string): string {

@@ -28,6 +28,12 @@
       "migrations_dir": "./migrations"
     }
   ],
+  "send_email": [
+    {
+      "name": "EMAIL",
+      "allowed_sender_addresses": ["no-reply@reyliar.xyz"]
+    }
+  ],
   "secrets": {
     "required": ["MISTRAL_API_KEY", "GAS_WEB_APP_URL", "TURNSTILE_SECRET_KEY"]
   },
