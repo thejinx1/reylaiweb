@@ -183,7 +183,7 @@ CONFIG_FILE = str(BASE_DIR / "reylai_config.json")
 CHAT_HISTORY_FILE = str(BASE_DIR / "reylai_chat_history.json")
 PAGE_IMAGE_DPI = max(90, min(_env_int("PAGE_IMAGE_DPI", 140), 220))
 
-ADMIN_PASSWORD = "ruhi123"
+ADMIN_PASSWORD = "benbugunpilavyedim"
 ADMIN_HASH = hashlib.sha256(ADMIN_PASSWORD.encode()).hexdigest()
 _auth_tokens = set()
 
@@ -1691,6 +1691,8 @@ HTML = """
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ReylAI | MEB Ders Kitapları</title>
 <meta name="theme-color" content="#05030c">
+<link rel="icon" type="image/png" href="{{ reylai_icon_src }}">
+<link rel="apple-touch-icon" href="{{ reylai_icon_src }}">
 <style id="reylai-boot-paint">
   html { background: #05030c; }
   body {
@@ -1715,7 +1717,7 @@ HTML = """
   --accent:     #6366f1;
   --accent-glow:#4f46e5;
   --accent-soft:rgba(99,102,241,0.12);
-  --green:      #34d399;
+  --green:      #a78bfa;
   --amber:      #fbbf24;
   --red:        #f87171;
   --text-primary: #eeeeff;
@@ -1800,7 +1802,7 @@ body::after {
   padding: 24px;
   background:
     linear-gradient(135deg, rgba(7,7,15,0.96), rgba(12,18,28,0.94)),
-    radial-gradient(circle at 50% 30%, rgba(52,211,153,0.14), transparent 44%);
+    radial-gradient(circle at 50% 30%, rgba(124,58,237,0.18), transparent 44%);
   transition: opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1), transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -1830,9 +1832,9 @@ body::after {
   border-radius: 50%;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(94,234,212,0.34);
+  border: 1px solid rgba(196,181,253,0.34);
   background: rgba(255,255,255,0.06);
-  box-shadow: 0 18px 64px rgba(0,0,0,0.28), 0 0 42px rgba(94,234,212,0.16);
+  box-shadow: 0 18px 64px rgba(0,0,0,0.28), 0 0 42px rgba(124,58,237,0.20);
   position: relative;
 }
 
@@ -1842,7 +1844,7 @@ body::after {
   inset: -8px;
   border-radius: inherit;
   border: 2px solid transparent;
-  border-top-color: rgba(94,234,212,0.82);
+  border-top-color: rgba(196,181,253,0.82);
   border-right-color: rgba(251,191,36,0.58);
   animation: loadingSpin 1.35s linear infinite;
 }
@@ -1881,7 +1883,7 @@ body::after {
   width: 38%;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--green), #67e8f9, var(--amber));
+  background: linear-gradient(90deg, #2b174a, #7c3aed, #c4b5fd);
   animation: loadingBar 1.45s ease-in-out infinite alternate;
 }
 
@@ -1900,7 +1902,7 @@ body::after {
   padding: clamp(16px, 4vw, 40px);
   background:
     linear-gradient(135deg, rgba(5, 3, 12, 1) 0%, rgba(16, 9, 31, 0.99) 50%, rgba(5, 4, 14, 1) 100%),
-    linear-gradient(90deg, rgba(124, 58, 237, 0.11), transparent 38%, rgba(45, 212, 191, 0.045));
+    linear-gradient(90deg, rgba(124, 58, 237, 0.12), transparent 38%, rgba(167, 139, 250, 0.075));
   opacity: 0;
   pointer-events: none;
   visibility: hidden;
@@ -1930,7 +1932,7 @@ body::after {
   inset: 0;
   background:
     linear-gradient(135deg, rgba(124, 58, 237, 0.12), transparent 38%),
-    linear-gradient(315deg, transparent 52%, rgba(45, 212, 191, 0.055));
+    linear-gradient(315deg, transparent 52%, rgba(167, 139, 250, 0.09));
   opacity: 0.68;
   transform: translate3d(-2%, -1%, 0);
   animation: authLiquidSheen 9s ease-in-out infinite alternate;
@@ -2016,9 +2018,9 @@ body.app-ready #libraryScreen {
   width: fit-content;
   padding: 8px 12px;
   border-radius: 999px;
-  border: 1px solid rgba(94,234,212,0.20);
-  background: rgba(94,234,212,0.08);
-  color: #8ff7e5;
+  border: 1px solid rgba(196,181,253,0.20);
+  background: rgba(124,58,237,0.12);
+  color: #c4b5fd;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.1em;
@@ -2065,8 +2067,8 @@ body.app-ready #libraryScreen {
   width: 7px;
   height: 7px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #5eead4, #fbbf24);
-  box-shadow: 0 0 18px rgba(94,234,212,0.44);
+  background: linear-gradient(135deg, #7c3aed, #c4b5fd);
+  box-shadow: 0 0 18px rgba(124,58,237,0.36);
 }
 
 .auth-panel-card {
@@ -2121,7 +2123,7 @@ body.app-ready #libraryScreen {
 }
 
 .auth-panel-label {
-  color: var(--green);
+  color: #c4b5fd;
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.12em;
@@ -2176,7 +2178,7 @@ body.app-ready #libraryScreen {
   bottom: -1px;
   height: 3px;
   border-radius: 999px 999px 0 0;
-  background: linear-gradient(90deg, var(--accent), #a78bfa, var(--green));
+  background: linear-gradient(90deg, #2b174a, #7c3aed, #c4b5fd);
   box-shadow: 0 0 22px rgba(139, 92, 246, 0.38);
 }
 
@@ -2278,8 +2280,8 @@ body.app-ready #libraryScreen {
 }
 
 .account-input:focus {
-  border-color: rgba(94,234,212,0.56);
-  box-shadow: 0 0 0 4px rgba(94,234,212,0.12);
+  border-color: rgba(196,181,253,0.56);
+  box-shadow: 0 0 0 4px rgba(124,58,237,0.16);
 }
 
 .account-input-shell .account-input:focus {
@@ -2326,9 +2328,9 @@ body.app-ready #libraryScreen {
 }
 
 .remember-row input:checked + .remember-check {
-  color: #080512;
-  background: linear-gradient(135deg, var(--green), #a78bfa);
-  border-color: rgba(94,234,212,0.70);
+  color: #f7f2ff;
+  background: linear-gradient(135deg, #2b174a, #7c3aed);
+  border-color: rgba(196,181,253,0.48);
   box-shadow: 0 12px 28px rgba(139, 92, 246, 0.24);
 }
 
@@ -2401,7 +2403,7 @@ body.app-ready #libraryScreen {
 .account-switch-note button {
   border: 0;
   background: transparent;
-  color: var(--green);
+  color: #c4b5fd;
   font-weight: 900;
   cursor: pointer;
 }
@@ -2425,7 +2427,7 @@ body.app-ready #libraryScreen {
 }
 
 .account-chip:hover {
-  border-color: rgba(94,234,212,0.34);
+  border-color: rgba(196,181,253,0.38);
   background: rgba(255,255,255,0.12);
   transform: translateY(-1px);
 }
@@ -2436,7 +2438,7 @@ body.app-ready #libraryScreen {
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, #5eead4, #fbbf24);
+  background: linear-gradient(135deg, #2b174a, #7c3aed);
   color: #071015;
   font-size: 12px;
   font-weight: 900;
@@ -2461,9 +2463,9 @@ body.app-ready #libraryScreen {
   height: 22px;
   padding: 0 8px;
   border-radius: 999px;
-  border: 1px solid rgba(94,234,212,0.24);
-  background: rgba(94,234,212,0.10);
-  color: var(--green);
+  border: 1px solid rgba(196,181,253,0.26);
+  background: rgba(124,58,237,0.16);
+  color: #c4b5fd;
   font-size: 11px;
   font-weight: 900;
 }
@@ -2511,8 +2513,8 @@ body.account-menu-open .account-menu {
   border-radius: 18px;
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, #5eead4, #fbbf24);
-  color: #071015;
+  background: linear-gradient(135deg, #2b174a, #7c3aed);
+  color: #f7f2ff;
   font-size: 20px;
   font-weight: 950;
   background-size: cover;
@@ -2556,9 +2558,9 @@ body.account-menu-open .account-menu {
 
 .account-role-badge.admin,
 .account-role-badge.staff {
-  border-color: rgba(94,234,212,0.28);
-  background: rgba(94,234,212,0.10);
-  color: var(--green);
+  border-color: rgba(196,181,253,0.30);
+  background: rgba(124,58,237,0.16);
+  color: #c4b5fd;
 }
 
 .account-verify-state {
@@ -2569,7 +2571,7 @@ body.account-menu-open .account-menu {
 }
 
 .account-verify-state.verified {
-  color: var(--green);
+  color: #c4b5fd;
 }
 
 .account-menu-actions {
@@ -2596,7 +2598,7 @@ body.account-menu-open .account-menu {
 
 .account-menu-btn:hover {
   background: rgba(255,255,255,0.12);
-  border-color: rgba(94,234,212,0.24);
+  border-color: rgba(196,181,253,0.28);
   transform: translateY(-1px);
 }
 
@@ -3366,7 +3368,7 @@ body.account-menu-open .account-menu {
   font-weight: 600;
 }
 
-.scan-badge.done    { background: rgba(52,211,153,0.12); color: var(--green); }
+.scan-badge.done    { background: rgba(124,58,237,0.14); color: var(--green); }
 .scan-badge.pending { background: rgba(99,102,241,0.1); color: #a5b4fc; }
 .scan-badge.failed  { background: rgba(248,113,113,0.1); color: var(--red); }
 
@@ -3478,7 +3480,7 @@ body.account-menu-open .account-menu {
 }
 .net-indicator:active { transform: scale(0.95); }
 
-.net-indicator.online   { color: #34d399; }
+.net-indicator.online   { color: #a78bfa; }
 .net-indicator.offline  { color: #f87171; }
 .net-indicator.wifi     { color: #a5b4fc; }
 .net-indicator.ethernet { color: #a5b4fc; }
@@ -3496,7 +3498,7 @@ body.account-menu-open .account-menu {
 }
 .net-indicator.online .net-dot,
 .net-indicator.wifi .net-dot,
-.net-indicator.ethernet .net-dot { background: #34d399; }
+.net-indicator.ethernet .net-dot { background: #a78bfa; }
 .net-indicator.offline .net-dot  { background: #f87171; }
 
 /* Buttons */
@@ -3775,8 +3777,8 @@ body.account-menu-open .account-menu {
 .chat-history-continue {
   border: none;
   border-radius: 10px;
-  background: rgba(52,211,153,0.14);
-  color: #9ff0ce;
+  background: rgba(124,58,237,0.14);
+  color: #c4b5fd;
   font-family: 'Manrope', 'Inter', sans-serif;
   font-size: 11.5px;
   font-weight: 800;
@@ -3839,9 +3841,9 @@ body.account-menu-open .account-menu {
   font-weight: 600;
   color: var(--green);
   padding: 8px 12px;
-  background: rgba(52,211,153,0.07);
+  background: rgba(124,58,237,0.10);
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(52,211,153,0.15);
+  border: 1px solid rgba(196,181,253,0.16);
 }
 
 /* PDF viewer button */
@@ -4336,9 +4338,9 @@ body.account-menu-open .account-menu {
   gap: 10px;
   padding: 12px 18px;
   border-radius: 999px;
-  border: 1px solid rgba(52,211,153,0.3);
-  background: rgba(12,28,26,0.92);
-  color: #d1fae5;
+  border: 1px solid rgba(196,181,253,0.28);
+  background: rgba(18,10,34,0.92);
+  color: #ede9fe;
   box-shadow: 0 14px 36px rgba(0,0,0,0.35);
   z-index: 6;
 }
@@ -5010,7 +5012,7 @@ body.account-menu-open .account-menu {
 
 .profile-settings-kicker,
 .admin-tools-kicker {
-  color: var(--green);
+  color: #c4b5fd;
   font-size: 11px;
   font-weight: 950;
   letter-spacing: 0.16em;
@@ -5049,8 +5051,8 @@ body.account-menu-open .account-menu {
   border-radius: 28px;
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, #5eead4, #fbbf24);
-  color: #071015;
+  background: linear-gradient(135deg, #2b174a, #7c3aed);
+  color: #f7f2ff;
   font-size: 34px;
   font-weight: 950;
   background-size: cover;
@@ -5092,8 +5094,8 @@ body.account-menu-open .account-menu {
 }
 
 .settings-input:focus {
-  border-color: rgba(94,234,212,0.45);
-  box-shadow: 0 0 0 4px rgba(94,234,212,0.09);
+  border-color: rgba(196,181,253,0.45);
+  box-shadow: 0 0 0 4px rgba(124,58,237,0.14);
 }
 
 .verification-box {
@@ -5106,8 +5108,8 @@ body.account-menu-open .account-menu {
 }
 
 .verification-box.verified {
-  border-color: rgba(94,234,212,0.24);
-  background: rgba(94,234,212,0.07);
+  border-color: rgba(196,181,253,0.24);
+  background: rgba(124,58,237,0.10);
 }
 
 .verification-status {
@@ -5163,6 +5165,93 @@ body.account-menu-open .account-menu {
   gap: 9px;
 }
 
+.admin-sensitive-actions {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: center;
+  margin: 0 0 14px;
+  padding: 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(196,181,253,0.14);
+  background: linear-gradient(135deg, rgba(21, 13, 38, 0.72), rgba(8, 6, 17, 0.62));
+}
+
+.admin-sensitive-note {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.admin-sensitive-list {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.admin-sensitive-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(196,181,253,0.14);
+  background: linear-gradient(145deg, rgba(24, 15, 43, 0.72), rgba(9, 6, 18, 0.70));
+  box-shadow: inset 0 1px rgba(255,255,255,0.06);
+}
+
+.admin-sensitive-title {
+  color: var(--text-primary);
+  font-weight: 950;
+  overflow-wrap: anywhere;
+}
+
+.admin-sensitive-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.admin-sensitive-field {
+  min-height: 58px;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(196,181,253,0.12);
+  background: rgba(255,255,255,0.05);
+}
+
+.admin-sensitive-label {
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.admin-sensitive-value {
+  margin-top: 5px;
+  color: var(--text-primary);
+  font-size: 12.5px;
+  font-weight: 800;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.admin-session-list {
+  display: grid;
+  gap: 7px;
+}
+
+.admin-session-row {
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(196,181,253,0.10);
+  background: rgba(8,6,17,0.42);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
 .admin-account-row {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -5213,9 +5302,9 @@ body.account-menu-open .account-menu {
 }
 
 .admin-mini-badge.good {
-  color: var(--green);
-  border-color: rgba(94,234,212,0.24);
-  background: rgba(94,234,212,0.08);
+  color: #c4b5fd;
+  border-color: rgba(196,181,253,0.24);
+  background: rgba(124,58,237,0.10);
 }
 
 .admin-mini-badge.warn {
@@ -5233,6 +5322,10 @@ body.account-menu-open .account-menu {
   }
   .admin-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .admin-sensitive-actions,
+  .admin-sensitive-grid {
+    grid-template-columns: 1fr;
   }
   .admin-account-row {
     grid-template-columns: 1fr;
@@ -5674,7 +5767,7 @@ body.account-menu-open .account-menu {
   to { transform: scale(0.92); opacity: 0; }
 }
 
-.toast.success { border-color: rgba(52,211,153,0.34); }
+.toast.success { border-color: rgba(196,181,253,0.34); }
 .toast.error   { border-color: rgba(248,113,113,0.34); }
 .toast.warning { border-color: rgba(251,191,36,0.34); }
 .toast.info    { border-color: rgba(99,102,241,0.34); }
@@ -5731,8 +5824,8 @@ body.account-menu-open .account-menu {
 }
 
 .checkmark-circle {
-  fill: rgba(52,211,153,0.12);
-  stroke: rgba(52,211,153,0.42);
+  fill: rgba(124,58,237,0.14);
+  stroke: rgba(196,181,253,0.42);
   stroke-width: 2;
   stroke-dasharray: 166;
   stroke-dashoffset: 166;
@@ -5874,7 +5967,7 @@ body.account-menu-open .account-menu {
   height: 100%;
   width: 0%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #6366f1, #34d399);
+  background: linear-gradient(90deg, #2b174a, #7c3aed);
   transition: width 0.25s ease;
 }
 
@@ -5964,10 +6057,10 @@ body.account-menu-open .account-menu {
   --bg-main: rgba(255, 255, 255, 0.46);
   --bg-base: #edf3f8;
   --border: rgba(42, 56, 78, 0.16);
-  --accent: #007aff;
-  --accent-glow: #0a84ff;
-  --accent-soft: rgba(0, 122, 255, 0.14);
-  --green: #248a3d;
+  --accent: #7c3aed;
+  --accent-glow: #a78bfa;
+  --accent-soft: rgba(124, 58, 237, 0.14);
+  --green: #7c3aed;
   --amber: #b56200;
   --red: #d92d20;
   --text-primary: #132238;
@@ -5980,11 +6073,11 @@ body.account-menu-open .account-menu {
   --material-sheet: linear-gradient(180deg, rgba(250, 253, 255, 0.86), rgba(241, 247, 252, 0.66));
   --material-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.34));
   --material-clear: linear-gradient(135deg, rgba(255, 255, 255, 0.50), rgba(255, 255, 255, 0.20));
-  --material-stained: linear-gradient(135deg, rgba(0, 122, 255, 0.92), rgba(45, 166, 255, 0.72));
+  --material-stained: linear-gradient(135deg, rgba(76, 29, 149, 0.94), rgba(124, 58, 237, 0.76));
   --glass-border: rgba(255, 255, 255, 0.68);
   --glass-edge: rgba(40, 58, 83, 0.14);
   --shadow-card: 0 18px 55px rgba(48, 64, 92, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.74);
-  --shadow-glow: 0 18px 46px rgba(0, 122, 255, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.42);
+  --shadow-glow: 0 18px 46px rgba(124, 58, 237, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.42);
   --shadow-float: 0 28px 82px rgba(38, 54, 81, 0.22), 0 1px 0 rgba(255, 255, 255, 0.72) inset;
   --transition: 0.42s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -5998,8 +6091,8 @@ body {
 
 body::before {
   background:
-    linear-gradient(115deg, rgba(0, 122, 255, 0.16), transparent 30%),
-    linear-gradient(245deg, rgba(52, 199, 89, 0.12), transparent 38%),
+    linear-gradient(115deg, rgba(124, 58, 237, 0.16), transparent 30%),
+    linear-gradient(245deg, rgba(124, 58, 237, 0.14), transparent 38%),
     linear-gradient(180deg, rgba(255, 214, 102, 0.12), transparent 48%),
     linear-gradient(180deg, #f9fcff 0%, #edf4f9 42%, #f7fbff 100%);
   background-size: cover;
@@ -6021,7 +6114,7 @@ body::after {
 }
 
 ::selection {
-  background: rgba(0, 122, 255, 0.2);
+  background: rgba(124, 58, 237, 0.20);
 }
 
 button,
@@ -6096,7 +6189,7 @@ select {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.04) 48%, rgba(0, 122, 255, 0.08));
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.04) 48%, rgba(124, 58, 237, 0.08));
   opacity: 0.78;
 }
 
@@ -6134,7 +6227,7 @@ select {
 
 .nav-logo-shell::before {
   inset: 6px 4px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(0, 122, 255, 0.16));
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(124, 58, 237, 0.16));
   filter: blur(10px);
   opacity: 0.82;
 }
@@ -6142,7 +6235,7 @@ select {
 .nav-logo-shell::after {
   inset: 8px 7px;
   border-color: rgba(255, 255, 255, 0.7);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 12px 28px rgba(0, 122, 255, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 12px 28px rgba(124, 58, 237, 0.16);
 }
 
 .grade-strip {
@@ -6161,7 +6254,7 @@ select {
 .search-wrap::before {
   inset: -1px;
   border-radius: inherit;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(0, 122, 255, 0.28), rgba(52, 199, 89, 0.16));
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(124, 58, 237, 0.30), rgba(196, 181, 253, 0.18));
   filter: blur(12px);
   opacity: 0.32;
   animation: none;
@@ -6198,8 +6291,8 @@ select {
 .auth-input:focus,
 .pdf-page-input:focus,
 .chat-input-wrap:focus-within {
-  border-color: rgba(0, 122, 255, 0.56);
-  box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.68);
+  border-color: rgba(124, 58, 237, 0.56);
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.68);
 }
 
 .search-icon,
@@ -6276,7 +6369,7 @@ select {
 .rename-cover-btn:hover,
 .sync-btn-empty:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.72);
-  border-color: rgba(0, 122, 255, 0.38);
+  border-color: rgba(124, 58, 237, 0.38);
   color: var(--accent-glow);
   box-shadow: var(--shadow-glow);
 }
@@ -6293,7 +6386,7 @@ select {
 
 .btn-primary:hover,
 #analyzeBtn:hover {
-  background: linear-gradient(135deg, #0a84ff, #49b8ff);
+  background: linear-gradient(135deg, #6d28d9, #a78bfa);
   box-shadow: var(--shadow-glow);
 }
 
@@ -6303,7 +6396,7 @@ select {
 
 .book-grid-wrap {
   padding: 30px 40px 132px;
-  scrollbar-color: rgba(0, 122, 255, 0.25) transparent;
+  scrollbar-color: rgba(124, 58, 237, 0.25) transparent;
 }
 
 .book-card {
@@ -6315,16 +6408,16 @@ select {
 }
 
 .book-card:hover {
-  border-color: rgba(0, 122, 255, 0.34);
+  border-color: rgba(124, 58, 237, 0.34);
   transform: translateY(-6px) scale(1.018);
-  box-shadow: 0 24px 70px rgba(32, 57, 92, 0.22), 0 12px 34px rgba(0, 122, 255, 0.16);
+  box-shadow: 0 24px 70px rgba(32, 57, 92, 0.22), 0 12px 34px rgba(124, 58, 237, 0.16);
 }
 
 .card-cover,
 .rename-cover-preview {
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.72), rgba(227, 236, 246, 0.72)),
-    linear-gradient(45deg, rgba(0, 122, 255, 0.12), rgba(52, 199, 89, 0.10));
+    linear-gradient(45deg, rgba(124, 58, 237, 0.14), rgba(196, 181, 253, 0.10));
   border-color: rgba(32, 48, 74, 0.12);
 }
 
@@ -6351,12 +6444,12 @@ select {
 }
 
 .scan-badge.done {
-  background: rgba(52, 199, 89, 0.12);
+  background: rgba(124, 58, 237, 0.13);
   color: var(--green);
 }
 
 .scan-badge.pending {
-  background: rgba(0, 122, 255, 0.12);
+  background: rgba(124, 58, 237, 0.12);
   color: var(--accent);
 }
 
@@ -6369,7 +6462,7 @@ select {
 
 .card-analyze-btn {
   background: rgba(255, 255, 255, 0.46);
-  border-color: rgba(0, 122, 255, 0.22);
+  border-color: rgba(124, 58, 237, 0.22);
   color: var(--accent);
   min-height: 38px;
 }
@@ -6405,8 +6498,8 @@ select {
 .pdf-ctrl-btn.active,
 .cfg-close-btn:hover,
 .toast-close:hover {
-  background: rgba(0, 122, 255, 0.13);
-  border-color: rgba(0, 122, 255, 0.24);
+  background: rgba(124, 58, 237, 0.13);
+  border-color: rgba(124, 58, 237, 0.24);
   color: var(--accent);
 }
 
@@ -6555,14 +6648,14 @@ select {
 
 .chat-history-empty {
   background: rgba(255, 255, 255, 0.34);
-  border-color: rgba(0, 122, 255, 0.20);
+  border-color: rgba(124, 58, 237, 0.20);
   color: var(--text-secondary);
 }
 
 .chat-history-item:hover,
 .chat-history-item.active {
   background: rgba(255, 255, 255, 0.72);
-  border-color: rgba(0, 122, 255, 0.30);
+  border-color: rgba(124, 58, 237, 0.30);
 }
 
 #analysisScreen {
@@ -6589,12 +6682,12 @@ select {
 
 .analysis-status {
   color: var(--green);
-  background: rgba(52, 199, 89, 0.12);
-  border-color: rgba(52, 199, 89, 0.20);
+  background: rgba(124, 58, 237, 0.14);
+  border-color: rgba(196, 181, 253, 0.22);
 }
 
 .chat-flow {
-  scrollbar-color: rgba(0, 122, 255, 0.25) transparent;
+  scrollbar-color: rgba(124, 58, 237, 0.25) transparent;
 }
 
 .chat-empty {
@@ -6610,14 +6703,14 @@ select {
 .chip:hover {
   background: rgba(255, 255, 255, 0.72);
   color: var(--accent);
-  border-color: rgba(0, 122, 255, 0.24);
+  border-color: rgba(124, 58, 237, 0.24);
 }
 
 .chat-bubble {
-  background: linear-gradient(135deg, rgba(0, 122, 255, 0.95), rgba(72, 179, 255, 0.76));
+  background: linear-gradient(135deg, rgba(76, 29, 149, 0.95), rgba(124, 58, 237, 0.76));
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.36);
-  box-shadow: 0 18px 42px rgba(0, 122, 255, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  box-shadow: 0 18px 42px rgba(124, 58, 237, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.35);
   backdrop-filter: blur(18px) saturate(1.45);
   -webkit-backdrop-filter: blur(18px) saturate(1.45);
 }
@@ -6631,8 +6724,8 @@ select {
 .chat-md-quote,
 .cfg-desc,
 .add-desc {
-  background: rgba(0, 122, 255, 0.08);
-  border-color: rgba(0, 122, 255, 0.18);
+  background: rgba(124, 58, 237, 0.08);
+  border-color: rgba(124, 58, 237, 0.18);
 }
 
 .chat-md-code,
@@ -6645,7 +6738,7 @@ select {
 }
 
 .chat-md-table th {
-  background: rgba(0, 122, 255, 0.08);
+  background: rgba(124, 58, 237, 0.08);
 }
 
 .chat-md-table th,
@@ -6665,13 +6758,13 @@ select {
 
 .typing-spinner,
 .task-spinner {
-  border-color: rgba(0, 122, 255, 0.18);
+  border-color: rgba(124, 58, 237, 0.18);
   border-top-color: var(--accent);
 }
 
 .response-banner {
-  background: rgba(230, 255, 240, 0.78);
-  border-color: rgba(52, 199, 89, 0.26);
+  background: rgba(28, 19, 52, 0.88);
+  border-color: rgba(196, 181, 253, 0.24);
   color: var(--green);
   box-shadow: var(--shadow-float);
   backdrop-filter: blur(22px) saturate(1.4);
@@ -6740,7 +6833,7 @@ select {
 
 .pdf-load-ring-fg {
   stroke: var(--accent);
-  filter: drop-shadow(0 0 8px rgba(0, 122, 255, 0.28));
+  filter: drop-shadow(0 0 8px rgba(124, 58, 237, 0.28));
 }
 
 .pdf-load-pct,
@@ -6780,7 +6873,7 @@ select {
 }
 
 .auth-lock-icon {
-  background: rgba(0, 122, 255, 0.12);
+  background: rgba(124, 58, 237, 0.12);
   color: var(--accent);
 }
 
@@ -6805,11 +6898,11 @@ select {
 
 .upload-bar-fill,
 .toast.info .toast-progress {
-  background: linear-gradient(90deg, #007aff, #49b8ff);
+  background: linear-gradient(90deg, #4c1d95, #a78bfa);
 }
 
 .upload-overall-fill {
-  background: rgba(0, 122, 255, 0.34);
+  background: rgba(124, 58, 237, 0.34);
 }
 
 .toast {
@@ -6822,7 +6915,7 @@ select {
 }
 
 .task-progress-fill {
-  background: linear-gradient(90deg, #007aff, #30d158);
+  background: linear-gradient(90deg, #4c1d95, #a78bfa);
 }
 
 .task-cancel-note {
@@ -6957,7 +7050,7 @@ select {
   --accent: #8b5cf6;
   --accent-glow: #6d28d9;
   --accent-soft: rgba(124, 58, 237, 0.18);
-  --green: #5eead4;
+  --green: #a78bfa;
   --amber: #fbbf24;
   --red: #fb7185;
   --text-primary: #f3efff;
@@ -6983,7 +7076,7 @@ body {
 body::before {
   background:
     linear-gradient(135deg, rgba(5, 3, 12, 1) 0%, rgba(16, 9, 31, 0.99) 50%, rgba(5, 4, 14, 1) 100%),
-    linear-gradient(90deg, rgba(124, 58, 237, 0.11), transparent 38%, rgba(45, 212, 191, 0.045));
+    linear-gradient(90deg, rgba(124, 58, 237, 0.12), transparent 38%, rgba(167, 139, 250, 0.075));
   background-size: cover;
   opacity: 1;
 }
@@ -7045,7 +7138,7 @@ body::after {
 }
 
 .search-wrap::before {
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.52), rgba(45, 212, 191, 0.14));
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.52), rgba(196, 181, 253, 0.16));
 }
 
 .search-input,
@@ -7106,8 +7199,8 @@ body::after {
   padding: 7px 13px;
   border-radius: 999px;
   background: linear-gradient(135deg, rgba(12, 8, 24, 0.82), rgba(30, 17, 56, 0.60));
-  border-color: rgba(94, 234, 212, 0.26);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.34), 0 0 22px rgba(94, 234, 212, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  border-color: rgba(196, 181, 253, 0.26);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.34), 0 0 22px rgba(124, 58, 237, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.09);
   font-weight: 750;
   letter-spacing: 0.01em;
 }
@@ -7137,8 +7230,8 @@ body::after {
   padding: 9px 12px;
   border-radius: 12px;
   background: linear-gradient(135deg, rgba(10, 7, 21, 0.86), rgba(27, 16, 52, 0.68));
-  border-color: rgba(94, 234, 212, 0.22);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.30), 0 0 20px rgba(94, 234, 212, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border-color: rgba(196, 181, 253, 0.22);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.30), 0 0 20px rgba(124, 58, 237, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   font-weight: 800;
   letter-spacing: 0.01em;
 }
@@ -7193,7 +7286,7 @@ body::after {
 .rename-cover-preview {
   background:
     linear-gradient(145deg, rgba(33, 24, 55, 0.92), rgba(14, 10, 28, 0.94)),
-    linear-gradient(45deg, rgba(167, 139, 250, 0.16), rgba(45, 212, 191, 0.08));
+    linear-gradient(45deg, rgba(167, 139, 250, 0.16), rgba(124, 58, 237, 0.12));
   border-color: rgba(196, 181, 253, 0.16);
 }
 
@@ -7275,7 +7368,7 @@ body::after {
 }
 
 .scan-badge.done {
-  background: rgba(94, 234, 212, 0.13);
+  background: rgba(124, 58, 237, 0.16);
   color: var(--green);
 }
 
@@ -7417,7 +7510,7 @@ body::after {
 
 .response-banner {
   background: rgba(17, 45, 43, 0.82);
-  border-color: rgba(94, 234, 212, 0.28);
+  border-color: rgba(196, 181, 253, 0.28);
 }
 
 .pdf-viewer-overlay {
@@ -7450,7 +7543,7 @@ body::after {
 .upload-bar-fill,
 .task-progress-fill,
 .toast.info .toast-progress {
-  background: linear-gradient(90deg, #7c3aed, #5eead4);
+  background: linear-gradient(90deg, #2b174a, #7c3aed, #c4b5fd);
 }
 
 @media (max-width: 600px) {
@@ -7614,7 +7707,7 @@ body::after {
 
 @keyframes floatBooks {
   0% { transform: translateY(0) rotate(-0.8deg); filter: drop-shadow(0 6px 18px rgba(109, 40, 217, 0.20)); }
-  100% { transform: translateY(-9px) rotate(0.8deg); filter: drop-shadow(0 14px 26px rgba(94, 234, 212, 0.12)); }
+  100% { transform: translateY(-9px) rotate(0.8deg); filter: drop-shadow(0 14px 26px rgba(167, 139, 250, 0.16)); }
 }
 
 @keyframes chatHistoryIn {
@@ -7703,8 +7796,8 @@ body::after {
 }
 
 .chat-input-wrap.editing {
-  border-color: rgba(94, 234, 212, 0.42);
-  box-shadow: 0 0 0 1px rgba(94, 234, 212, 0.16), 0 0 28px rgba(94, 234, 212, 0.10);
+  border-color: rgba(196, 181, 253, 0.42);
+  box-shadow: 0 0 0 1px rgba(196, 181, 253, 0.16), 0 0 28px rgba(124, 58, 237, 0.16);
 }
 
 #analyzeBtn.loading {
@@ -7718,8 +7811,8 @@ body::after {
 }
 
 #analyzeBtn.edit-mode {
-  background: linear-gradient(135deg, rgba(20, 184, 166, 0.88), rgba(91, 33, 182, 0.94));
-  border-color: rgba(94, 234, 212, 0.30);
+  background: linear-gradient(135deg, rgba(76, 29, 149, 0.96), rgba(91, 33, 182, 0.94));
+  border-color: rgba(196, 181, 253, 0.30);
 }
 
 .library-bottom-menu {
@@ -8290,6 +8383,11 @@ body::after {
       <button class="cfg-close-btn" type="button" onclick="closeAdminTools()">&#x2715;</button>
     </div>
     <div class="admin-stats" id="adminStats"></div>
+    <div class="admin-sensitive-actions">
+      <button class="account-menu-btn" type="button" onclick="unlockAdminSensitive()">Kilitli detayları aç</button>
+      <div class="admin-sensitive-note">Şifreler düz metin olarak saklanmaz; güvenli hash özeti ve cihaz oturumları gösterilir.</div>
+    </div>
+    <div class="admin-sensitive-list" id="adminSensitiveList"></div>
     <div class="admin-account-list" id="adminAccountsList"></div>
   </div>
 </div>
@@ -8962,7 +9060,9 @@ async function loadAdminTools() {
 function renderAdminTools(data) {
   const statsEl = document.getElementById('adminStats');
   const listEl = document.getElementById('adminAccountsList');
+  const sensitiveEl = document.getElementById('adminSensitiveList');
   if (!statsEl || !listEl) return;
+  if (sensitiveEl) sensitiveEl.innerHTML = '';
   if (data && data.loading) {
     statsEl.innerHTML = '<div class="admin-stat"><div class="admin-stat-value">...</div><div class="admin-stat-label">Yükleniyor</div></div>';
     listEl.innerHTML = '';
@@ -8998,6 +9098,75 @@ function renderAdminTools(data) {
       '<div class="admin-account-flags">' + roles + verified + '<span class="admin-mini-badge">' + escHtml(account.session_count || 0) + ' oturum</span></div>' +
     '</div>';
   }).join('') || '<div class="admin-account-row"><div class="admin-account-main"><div class="admin-account-name">Hesap yok</div><div class="admin-account-meta">Henüz listelenecek kullanıcı bulunamadı.</div></div></div>';
+}
+
+function unlockAdminSensitive() {
+  requireAuth(function() {
+    loadAdminSensitive(_lastAdminPassword);
+  }, true);
+}
+
+async function loadAdminSensitive(password) {
+  const target = document.getElementById('adminSensitiveList');
+  if (!target) return;
+  target.innerHTML = '<div class="admin-sensitive-card"><div class="admin-sensitive-title">Gizli detaylar yükleniyor...</div></div>';
+  try {
+    const res = await apiFetch('/api/admin/accounts/sensitive', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: password || '' })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Gizli detaylar açılamadı.');
+    renderAdminSensitive(data.accounts || []);
+  } catch(e) {
+    target.innerHTML = '<div class="admin-sensitive-card"><div class="admin-sensitive-title">Gizli detaylar açılamadı</div><div class="admin-account-meta">' + escHtml(e.message || 'Bağlantı hatası.') + '</div></div>';
+  } finally {
+    _lastAdminPassword = '';
+  }
+}
+
+function renderAdminSensitive(accounts) {
+  const target = document.getElementById('adminSensitiveList');
+  if (!target) return;
+  target.innerHTML = (accounts || []).map(function(account) {
+    const storage = account.password_storage || {};
+    const sessions = Array.isArray(account.sessions) ? account.sessions : [];
+    const sessionHtml = sessions.slice(0, 8).map(function(session) {
+      const device = describeDevice(session.user_agent || '');
+      const status = session.active ? 'Aktif' : 'Süresi dolmuş';
+      return '<div class="admin-session-row">' +
+        '<strong>' + escHtml(status) + '</strong> · IP: ' + escHtml(session.ip_address || 'Bilinmiyor') +
+        '<br>' + escHtml(device) +
+        '<br>Son görülme: ' + escHtml(session.last_seen_at ? formatAdminDate(session.last_seen_at) : 'Yok') +
+        ' · Oluşturulma: ' + escHtml(session.created_at ? formatAdminDate(session.created_at) : 'Yok') +
+      '</div>';
+    }).join('') || '<div class="admin-session-row">Kayıtlı cihaz oturumu yok.</div>';
+    return '<div class="admin-sensitive-card">' +
+      '<div class="admin-sensitive-title">' + escHtml(account.display_name || 'Hesap') + ' · ' + escHtml(account.email || '') + '</div>' +
+      '<div class="admin-sensitive-grid">' +
+        sensitiveField('Şifre', storage.note || 'Şifreler korunuyor.') +
+        sensitiveField('Hash algoritması', (storage.algorithm || 'unknown') + ' · ' + escHtml(storage.iterations || 0) + ' iterasyon') +
+        sensitiveField('Hash parmak izi', storage.fingerprint || 'Yok') +
+        sensitiveField('Şifre güncelleme', account.password_updated_at ? formatAdminDate(account.password_updated_at) : 'Yok') +
+        sensitiveField('Son giriş IP', account.last_login_ip || 'Bilinmiyor') +
+        sensitiveField('Son giriş', account.last_login_at ? formatAdminDate(account.last_login_at) : 'Yok') +
+      '</div>' +
+      '<div class="admin-session-list">' + sessionHtml + '</div>' +
+    '</div>';
+  }).join('') || '<div class="admin-sensitive-card"><div class="admin-sensitive-title">Gizli detay yok</div></div>';
+}
+
+function sensitiveField(label, value) {
+  return '<div class="admin-sensitive-field"><div class="admin-sensitive-label">' + escHtml(label) + '</div><div class="admin-sensitive-value">' + escHtml(value) + '</div></div>';
+}
+
+function describeDevice(userAgent) {
+  const ua = String(userAgent || '');
+  if (!ua) return 'User-Agent yok';
+  const os = /Windows/i.test(ua) ? 'Windows' : (/Mac OS|Macintosh/i.test(ua) ? 'macOS' : (/Android/i.test(ua) ? 'Android' : (/iPhone|iPad/i.test(ua) ? 'iOS' : (/Linux/i.test(ua) ? 'Linux' : 'Bilinmeyen OS'))));
+  const browser = /Edg\//i.test(ua) ? 'Edge' : (/Chrome\//i.test(ua) ? 'Chrome' : (/Firefox\//i.test(ua) ? 'Firefox' : (/Safari\//i.test(ua) ? 'Safari' : 'Bilinmeyen tarayıcı')));
+  return browser + ' · ' + os + ' · ' + ua.slice(0, 180);
 }
 
 function formatAdminDate(value) {
@@ -9318,12 +9487,13 @@ function isAdminAuthed() { return !!getAdminAuthToken(); }
 
 var _authCallback = null;
 var _authSubmitting = false;
-function requireAuth(callback) {
+var _lastAdminPassword = '';
+function requireAuth(callback, forcePrompt) {
   if (!accountIsAdmin()) {
     showToast('warning', 'Yönetici hesabı gerekli', 'Bu işlem sadece yönetici hesabı ile yapılabilir.', 4500);
     return;
   }
-  if (isAdminAuthed()) { callback(); return; }
+  if (!forcePrompt && isAdminAuthed()) { callback(); return; }
   _abortPrefetches();
   _authCallback = callback;
   _authSubmitting = false;
@@ -9336,6 +9506,7 @@ function closeAuth() {
   document.getElementById('authOverlay').classList.remove('active');
   _authCallback = null;
   _authSubmitting = false;
+  _lastAdminPassword = '';
 }
 function runAuthedCallback(callback) {
   if (typeof callback !== 'function') return;
@@ -9367,6 +9538,7 @@ async function submitAuth() {
       sessionStorage.setItem('admin_auth_token', data.token);
       var cb = _authCallback;
       closeAuth();
+      _lastAdminPassword = pw;
       runAuthedCallback(cb);
     } else {
       errEl.textContent = data.error || 'Yanl\u0131\u015f \u015fifre.';
@@ -12815,7 +12987,7 @@ async function confirmDelete() {
 }
 
 // ── Status helpers ─────────────────────────────────────────────────────────────
-const colors = { green: '#5eead4', amber: '#fbbf24', red: '#fb7185' };
+const colors = { green: '#a78bfa', amber: '#fbbf24', red: '#fb7185' };
 function setLibStatus(msg, color) {
   color = color || 'green';
   const el   = document.getElementById('libStatusText');
