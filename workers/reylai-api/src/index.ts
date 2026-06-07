@@ -1489,10 +1489,11 @@ function publicDmMessage(message: DmMessageRow, currentUserId: string): Record<s
 
 function normalizePresenceStatus(value: string): string {
   const status = String(value || "online").trim().toLowerCase();
-  return ["online", "idle", "dnd"].includes(status) ? status : "online";
+  return ["online", "idle", "dnd", "invisible"].includes(status) ? status : "online";
 }
 
 function effectivePresenceStatus(status: string, lastSeenAt: string): string {
+  if (normalizePresenceStatus(status) === "invisible") return "offline";
   const seenAt = lastSeenAt ? Date.parse(lastSeenAt) : 0;
   if (!seenAt || Date.now() - seenAt > 2 * 60 * 1000) return "offline";
   return normalizePresenceStatus(status);

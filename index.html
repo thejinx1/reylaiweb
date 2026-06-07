@@ -753,6 +753,37 @@ body.app-ready #libraryScreen {
   font-weight: 800;
 }
 
+.account-chip-presence {
+  display: none;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(147,197,253,0.20);
+  background: rgba(255,255,255,0.08);
+  color: #bfdbfe;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.account-chip-presence.visible {
+  display: inline-flex;
+}
+
+.account-chip-presence-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow: 0 0 12px currentColor;
+}
+
+.account-chip-presence.online { color: #22c55e; }
+.account-chip-presence.idle { color: #facc15; }
+.account-chip-presence.dnd { color: #f87171; }
+.account-chip-presence.invisible { color: #94a3b8; }
+
 .account-chip-role {
   display: none;
   align-items: center;
@@ -873,7 +904,7 @@ body.account-menu-open .account-menu {
 
 .presence-picker {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
   margin-top: 12px;
   padding: 5px;
@@ -909,11 +940,13 @@ body.account-menu-open .account-menu {
   width: 8px;
   height: 8px;
   border-radius: 999px;
-  background: #60a5fa;
+  background: #22c55e;
 }
 
+.presence-btn[data-presence="online"] .presence-mini-dot { box-shadow: 0 0 12px rgba(34,197,94,0.72); }
 .presence-btn[data-presence="idle"] .presence-mini-dot { background: #facc15; }
 .presence-btn[data-presence="dnd"] .presence-mini-dot { background: #f87171; }
+.presence-btn[data-presence="invisible"] .presence-mini-dot { background: #94a3b8; }
 
 .account-menu-actions {
   display: grid;
@@ -1132,9 +1165,10 @@ body.account-menu-open .account-menu {
   background: #64748b;
 }
 
-.dm-presence-dot.online { background: #60a5fa; box-shadow: 0 0 14px rgba(96,165,250,0.72); }
+.dm-presence-dot.online { background: #22c55e; box-shadow: 0 0 14px rgba(34,197,94,0.72); }
 .dm-presence-dot.idle { background: #facc15; }
 .dm-presence-dot.dnd { background: #f87171; }
+.dm-presence-dot.invisible { background: #64748b; }
 .dm-presence-dot.offline { background: #64748b; }
 
 .dm-avatar img {
@@ -7098,6 +7132,12 @@ body::after {
     font-size: 12.5px;
   }
 
+  .account-chip-presence {
+    height: 22px;
+    padding: 0 7px;
+    font-size: 10.5px;
+  }
+
   .account-chip-role {
     display: none !important;
   }
@@ -7574,6 +7614,16 @@ body::after {
     max-width: 92px;
   }
 
+  .account-chip-presence {
+    width: 24px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  #accountChipPresenceText {
+    display: none;
+  }
+
   .book-grid {
     gap: 8px;
   }
@@ -8008,6 +8058,7 @@ body::after,
       <button class="account-chip" id="accountChip" type="button" onclick="toggleAccountMenu(event)" aria-label="Hesap menüsünü aç" aria-expanded="false">
         <span class="account-avatar" id="accountAvatar">R</span>
         <span class="account-chip-name" id="accountChipName">Hesap</span>
+        <span class="account-chip-presence" id="accountChipPresence"><span class="account-chip-presence-dot"></span><span id="accountChipPresenceText">Çevrimiçi</span></span>
         <span class="account-chip-role" id="accountChipRole">Admin</span>
       </button>
       <div class="status-pill" id="libStatus">
@@ -8026,8 +8077,9 @@ body::after,
         <div class="account-verify-state" id="accountVerifyState">E-posta doğrulaması bekliyor</div>
         <div class="presence-picker" id="presencePicker" aria-label="Durum seçimi">
           <button class="presence-btn" data-presence="online" type="button" onclick="setPresenceStatus('online')"><span class="presence-mini-dot"></span>Çevrimiçi</button>
-          <button class="presence-btn" data-presence="idle" type="button" onclick="setPresenceStatus('idle')"><span class="presence-mini-dot"></span>Idle</button>
-          <button class="presence-btn" data-presence="dnd" type="button" onclick="setPresenceStatus('dnd')"><span class="presence-mini-dot"></span>DND</button>
+          <button class="presence-btn" data-presence="idle" type="button" onclick="setPresenceStatus('idle')"><span class="presence-mini-dot"></span>Boşta</button>
+          <button class="presence-btn" data-presence="dnd" type="button" onclick="setPresenceStatus('dnd')"><span class="presence-mini-dot"></span>Rahatsız etmeyin</button>
+          <button class="presence-btn" data-presence="invisible" type="button" onclick="setPresenceStatus('invisible')"><span class="presence-mini-dot"></span>Görünmez</button>
         </div>
         <div class="account-menu-actions">
           <button class="account-menu-btn" type="button" onclick="openProfileSettings()">⚙ Ayarlar</button>
@@ -8595,6 +8647,11 @@ let _pendingProfileAvatarDataUrl = '';
 let _profileCropImage = null;
 let _profileCropSrc = '';
 let _emailCodeMode = 'verify';
+const PRESENCE_IDLE_MS = 5 * 60 * 1000;
+let _presenceIdleTimer = null;
+let _presenceAutoIdle = false;
+let _presenceRestorePending = false;
+let _presenceActivityBound = false;
 let _emailCodeTargetEmail = '';
 let _emailCodeSubmitting = false;
 let _emailCodeAutoTimer = null;
@@ -8687,6 +8744,7 @@ function resetAccountScopedState() {
   _dmInitialPollDone = false;
   selectedBook = null;
   stopDmPolling();
+  resetPresenceAutomation();
   const dmOverlay = document.getElementById('dmOverlay');
   if (dmOverlay) dmOverlay.classList.remove('active', 'chat-open');
   const dmThreads = document.getElementById('dmThreadList');
@@ -9012,6 +9070,7 @@ async function submitAccountAuth(event) {
     _accountUser = data.user || null;
     resetAccountScopedState();
     updateAccountUI();
+    startPresenceAutomation();
     showLoadingOverlay('Kişisel alan açılıyor...');
     hideAccountAuth();
     await startApp();
@@ -9143,7 +9202,16 @@ function renderAccountBadges(roles) {
 
 function normalizePresenceStatus(status) {
   status = String(status || 'online').toLowerCase();
-  return ['online', 'idle', 'dnd'].indexOf(status) !== -1 ? status : 'online';
+  return ['online', 'idle', 'dnd', 'invisible'].indexOf(status) !== -1 ? status : 'online';
+}
+
+function presenceLabel(status) {
+  status = normalizePresenceStatus(status);
+  if (status === 'online') return 'Çevrimiçi';
+  if (status === 'idle') return 'Boşta';
+  if (status === 'dnd') return 'Rahatsız etmeyin';
+  if (status === 'invisible') return 'Görünmez';
+  return 'Çevrimiçi';
 }
 
 function renderPresencePicker(status) {
@@ -9153,9 +9221,60 @@ function renderPresencePicker(status) {
   });
 }
 
-async function setPresenceStatus(status) {
+function bindPresenceActivityTracking() {
+  if (_presenceActivityBound) return;
+  _presenceActivityBound = true;
+  ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'focus'].forEach(function(eventName) {
+    window.addEventListener(eventName, handlePresenceActivity, { passive: true });
+  });
+}
+
+function stopPresenceIdleTimer() {
+  clearTimeout(_presenceIdleTimer);
+  _presenceIdleTimer = null;
+}
+
+function schedulePresenceIdleTimer() {
+  stopPresenceIdleTimer();
+  if (!_accountUser || normalizePresenceStatus(_accountUser.presence_status) !== 'online') return;
+  _presenceIdleTimer = setTimeout(function() {
+    if (_accountUser && normalizePresenceStatus(_accountUser.presence_status) === 'online') {
+      setPresenceStatus('idle', { auto: true, silent: true }).catch(function() {});
+    }
+  }, PRESENCE_IDLE_MS);
+}
+
+function handlePresenceActivity() {
+  if (!_accountUser) return;
+  if (_presenceAutoIdle && normalizePresenceStatus(_accountUser.presence_status) === 'idle') {
+    if (_presenceRestorePending) return;
+    _presenceRestorePending = true;
+    setPresenceStatus('online', { auto: true, silent: true }).catch(function() {}).finally(function() {
+      _presenceRestorePending = false;
+    });
+    return;
+  }
+  if (normalizePresenceStatus(_accountUser.presence_status) === 'online') {
+    schedulePresenceIdleTimer();
+  }
+}
+
+function startPresenceAutomation() {
+  bindPresenceActivityTracking();
+  schedulePresenceIdleTimer();
+}
+
+function resetPresenceAutomation() {
+  stopPresenceIdleTimer();
+  _presenceAutoIdle = false;
+  _presenceRestorePending = false;
+}
+
+async function setPresenceStatus(status, options) {
+  options = options || {};
   status = normalizePresenceStatus(status);
   if (!_accountUser) return;
+  if (!options.auto) _presenceAutoIdle = false;
   try {
     const res = await apiFetch('/api/auth/presence', {
       method: 'PATCH',
@@ -9165,9 +9284,12 @@ async function setPresenceStatus(status) {
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || 'Durum kaydedilemedi.');
     _accountUser = data.user || Object.assign({}, _accountUser, { presence_status: status });
+    _presenceAutoIdle = !!options.auto && status === 'idle';
     updateAccountUI();
+    schedulePresenceIdleTimer();
     fetchDmThreads().then(renderDmThreads).catch(function() {});
   } catch(e) {
+    if (options.silent) throw e;
     showToast('error', 'Durum kaydedilemedi', e.message || 'Bağlantı hatası.', 4200);
   }
 }
@@ -9180,6 +9302,8 @@ updateAccountUI = function() {
   const avatar = document.getElementById('accountAvatar');
   const menuAvatar = document.getElementById('accountMenuAvatar');
   const chipName = document.getElementById('accountChipName');
+  const chipPresence = document.getElementById('accountChipPresence');
+  const chipPresenceText = document.getElementById('accountChipPresenceText');
   const chipRole = document.getElementById('accountChipRole');
   const menuName = document.getElementById('accountMenuName');
   const menuEmail = document.getElementById('accountMenuEmail');
@@ -9190,6 +9314,12 @@ updateAccountUI = function() {
   setAccountAvatarElement(avatar, user);
   setAccountAvatarElement(menuAvatar, user);
   if (chipName) chipName.textContent = name;
+  const presence = normalizePresenceStatus(user.presence_status || 'online');
+  if (chipPresence) {
+    chipPresence.className = 'account-chip-presence' + (_accountUser ? ' visible ' + presence : '');
+    chipPresence.title = presenceLabel(presence);
+  }
+  if (chipPresenceText) chipPresenceText.textContent = presenceLabel(presence);
   if (menuName) menuName.textContent = name;
   if (menuEmail) menuEmail.textContent = email;
   if (badges) badges.innerHTML = renderAccountBadges(user.roles);
@@ -10087,11 +10217,13 @@ async function bootApp() {
     _accountUser = data.user;
     updateAccountUI();
     setLoadingStatus('Kütüphane ve sohbet geçmişi yükleniyor...');
+    startPresenceAutomation();
     await startApp();
     hideLoadingOverlay(true);
   } catch(e) {
     clearAppAuthToken();
     _accountUser = null;
+    resetPresenceAutomation();
     updateAccountUI();
     showAccountAuth();
     hideLoadingOverlay(false);
@@ -10635,14 +10767,15 @@ function dmUserName(user) {
 
 function dmPresenceStatus(user) {
   const status = String((user && (user.effective_presence || user.presence_status)) || 'offline').toLowerCase();
-  return ['online', 'idle', 'dnd', 'offline'].indexOf(status) !== -1 ? status : 'offline';
+  return ['online', 'idle', 'dnd', 'invisible', 'offline'].indexOf(status) !== -1 ? status : 'offline';
 }
 
 function dmPresenceLabel(user) {
   const status = dmPresenceStatus(user);
   if (status === 'online') return 'Çevrimiçi';
-  if (status === 'idle') return 'Idle';
-  if (status === 'dnd') return 'DND';
+  if (status === 'idle') return 'Boşta';
+  if (status === 'dnd') return 'Rahatsız etmeyin';
+  if (status === 'invisible') return 'Görünmez';
   return 'Çevrimdışı';
 }
 
