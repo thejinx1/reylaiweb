@@ -1687,7 +1687,7 @@ HTML = """
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ReylAI | MEB Ders Kitapları</title>
+<title>ReylAI</title>
 <meta name="theme-color" content="#030712">
 <link rel="icon" type="image/png" href="{{ reylai_icon_src }}">
 <link rel="apple-touch-icon" href="{{ reylai_icon_src }}">
@@ -2554,6 +2554,50 @@ body.account-menu-open .account-menu {
   color: #bfdbfe;
 }
 
+.presence-picker {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 12px;
+  padding: 5px;
+  border-radius: 18px;
+  border: 1px solid rgba(147,197,253,0.14);
+  background: rgba(3,7,18,0.18);
+}
+
+.presence-btn {
+  min-height: 32px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: var(--transition);
+}
+
+.presence-btn:hover,
+.presence-btn.active {
+  color: var(--text-primary);
+  background: rgba(37,99,235,0.18);
+  border-color: rgba(147,197,253,0.22);
+}
+
+.presence-mini-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #60a5fa;
+}
+
+.presence-btn[data-presence="idle"] .presence-mini-dot { background: #facc15; }
+.presence-btn[data-presence="dnd"] .presence-mini-dot { background: #f87171; }
+
 .account-menu-actions {
   display: grid;
   gap: 9px;
@@ -2748,6 +2792,34 @@ body.account-menu-open .account-menu {
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.24);
 }
 
+.dm-avatar-wrap {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+
+.dm-avatar-wrap .dm-avatar {
+  width: 100%;
+  height: 100%;
+}
+
+.dm-presence-dot {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 13px;
+  height: 13px;
+  border-radius: 999px;
+  border: 2px solid rgba(6,14,31,0.96);
+  background: #64748b;
+}
+
+.dm-presence-dot.online { background: #60a5fa; box-shadow: 0 0 14px rgba(96,165,250,0.72); }
+.dm-presence-dot.idle { background: #facc15; }
+.dm-presence-dot.dnd { background: #f87171; }
+.dm-presence-dot.offline { background: #64748b; }
+
 .dm-avatar img {
   width: 100%;
   height: 100%;
@@ -2763,7 +2835,6 @@ body.account-menu-open .account-menu {
 }
 
 .dm-thread-snippet,
-.dm-thread-email,
 .dm-chat-subtitle,
 .dm-time {
   color: var(--text-secondary);
@@ -2831,6 +2902,11 @@ body.account-menu-open .account-menu {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.dm-chat.switching .dm-message-list,
+.dm-chat.switching .dm-chat-user {
+  animation: dmConversationSwitch 0.28s var(--motion-smooth) both;
 }
 
 .dm-message {
@@ -2920,7 +2996,7 @@ body.account-menu-open .account-menu {
 
 .dm-compose-row {
   display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: end;
   gap: 9px;
 }
@@ -2944,14 +3020,14 @@ body.account-menu-open .account-menu {
   background: var(--material-stained);
 }
 
-.dm-recording {
-  color: #bfdbfe;
-  box-shadow: 0 0 0 3px rgba(96,165,250,0.16);
-}
-
 @keyframes dmMessageIn {
   from { opacity: 0; transform: translateY(8px) scale(0.99); }
   to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes dmConversationSwitch {
+  from { opacity: 0; transform: translateY(10px); filter: saturate(0.86); }
+  to { opacity: 1; transform: translateY(0); filter: none; }
 }
 
 @media (max-width: 860px) {
@@ -9090,7 +9166,7 @@ body::after {
   }
 
   .dm-compose-row {
-    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr) auto;
   }
 }
 
@@ -9547,6 +9623,11 @@ body::after,
         </div>
         <div class="account-role-badges" id="accountRoleBadges"></div>
         <div class="account-verify-state" id="accountVerifyState">E-posta doğrulaması bekliyor</div>
+        <div class="presence-picker" id="presencePicker" aria-label="Durum seçimi">
+          <button class="presence-btn" data-presence="online" type="button" onclick="setPresenceStatus('online')"><span class="presence-mini-dot"></span>Çevrimiçi</button>
+          <button class="presence-btn" data-presence="idle" type="button" onclick="setPresenceStatus('idle')"><span class="presence-mini-dot"></span>Idle</button>
+          <button class="presence-btn" data-presence="dnd" type="button" onclick="setPresenceStatus('dnd')"><span class="presence-mini-dot"></span>DND</button>
+        </div>
         <div class="account-menu-actions">
           <button class="account-menu-btn" type="button" onclick="openProfileSettings()">⚙ Ayarlar</button>
           <button class="account-menu-btn" type="button" onclick="openDmOverlay()">✉ Mesajlar</button>
@@ -9587,7 +9668,7 @@ body::after,
     </button>
   </div>
   <footer class="lib-footer">
-    <span class="footer-copy">\u00a92026 All Copyrights Reserved to <span class="footer-brand">reyli</span></span>
+    <span class="footer-copy">©️2026 reyli</span>
   </footer>
 </div>
 
@@ -10019,9 +10100,6 @@ body::after,
           <button class="dm-tool-btn" type="button" onclick="document.getElementById('dmFileInput').click()" aria-label="Dosya ekle" title="Dosya ekle">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05 12.2 20.29a6 6 0 0 1-8.49-8.49l9.24-9.24a4 4 0 0 1 5.66 5.66l-9.25 9.24a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
           </button>
-          <button class="dm-tool-btn" id="dmVoiceBtn" type="button" onclick="toggleDmVoiceRecording()" aria-label="Ses kaydı" title="Ses kaydı">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/></svg>
-          </button>
           <textarea class="dm-input" id="dmTextInput" rows="1" maxlength="4000" placeholder="Mesaj yaz..." oninput="autoResizeDmInput()"></textarea>
           <button class="dm-send-btn" type="button" onclick="sendDmMessage()" aria-label="Mesaj gönder">
             <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
@@ -10131,9 +10209,6 @@ let _dmPendingForward = null;
 let _dmPollTimer = null;
 let _dmKnownLatestIds = {};
 let _dmInitialPollDone = false;
-let _dmRecorder = null;
-let _dmVoiceChunks = [];
-let _dmVoiceStartedAt = 0;
 const BOOKS_REMOTE_BASE_URL = {{ books_remote_base_url|tojson }};
 
 const SEND_ICON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>';
@@ -10184,6 +10259,33 @@ function clearAppAuthToken() {
   sessionStorage.removeItem(APP_AUTH_SESSION_KEY);
 }
 
+function resetAccountScopedState() {
+  _chatStore = { chats: [] };
+  _chatStoreLoaded = false;
+  _chatStoreLoadPromise = null;
+  _activeChatId = '';
+  _dmUsers = [];
+  _dmThreads = [];
+  _dmActiveUserId = '';
+  _dmMessages = [];
+  _dmPendingAttachment = null;
+  _dmPendingForward = null;
+  _dmKnownLatestIds = {};
+  _dmInitialPollDone = false;
+  selectedBook = null;
+  stopDmPolling();
+  const dmOverlay = document.getElementById('dmOverlay');
+  if (dmOverlay) dmOverlay.classList.remove('active', 'chat-open');
+  const dmThreads = document.getElementById('dmThreadList');
+  if (dmThreads) dmThreads.innerHTML = '';
+  const dmMessages = document.getElementById('dmMessageList');
+  if (dmMessages) dmMessages.innerHTML = '<div class="dm-empty-state">Mesajlaşmak için soldan bir hesap seç.</div>';
+  renderDmHeader(null);
+  updateDmPendingBar();
+  clearChat();
+  renderChatHistory();
+}
+
 function apiFetch(url, options) {
   options = options || {};
   const headers = new Headers(options.headers || {});
@@ -10192,6 +10294,7 @@ function apiFetch(url, options) {
   return fetch(url, Object.assign({}, options, { headers: headers })).then(function(res) {
     if (res.status === 401) {
       clearAppAuthToken();
+      resetAccountScopedState();
       _accountUser = null;
       updateAccountUI();
       showAccountAuth();
@@ -10433,17 +10536,15 @@ async function submitAccountAuth(event) {
     }
     setAppAuthToken(data.token, remember);
     _accountUser = data.user || null;
+    resetAccountScopedState();
     updateAccountUI();
     showLoadingOverlay('Kişisel alan açılıyor...');
     hideAccountAuth();
-    _chatStoreLoaded = false;
-    _chatStoreLoadPromise = null;
-    _chatStore = { chats: [] };
     await startApp();
     hideLoadingOverlay(true);
     if (_accountAuthMode === 'signup' && _accountUser && !_accountUser.email_verified) {
       if (data.email_delivery_configured === false) {
-        showToast('warning', 'E-posta servisi bekliyor', 'Hesabın açıldı; doğrulama e-postası Cloudflare Email bağlanınca gönderilecek.', 6500);
+        showToast('warning', 'Kod gönderimi bekliyor', 'Hesabın açıldı; e-postana kod göndermek için servis hazırlanıyor.', 6500);
       } else {
         showToast('warning', 'E-postanı doğrula', 'E-postana gönderdiğimiz kodu açılan ekranda onayla.', 6200);
         setTimeout(function(){ openEmailCodeModal('verify', { email: _accountUser.email || '', send: false }); }, 850);
@@ -10566,6 +10667,37 @@ function renderAccountBadges(roles) {
   }).join('');
 }
 
+function normalizePresenceStatus(status) {
+  status = String(status || 'online').toLowerCase();
+  return ['online', 'idle', 'dnd'].indexOf(status) !== -1 ? status : 'online';
+}
+
+function renderPresencePicker(status) {
+  const active = normalizePresenceStatus(status);
+  document.querySelectorAll('#presencePicker .presence-btn').forEach(function(btn) {
+    btn.classList.toggle('active', btn.dataset.presence === active);
+  });
+}
+
+async function setPresenceStatus(status) {
+  status = normalizePresenceStatus(status);
+  if (!_accountUser) return;
+  try {
+    const res = await apiFetch('/api/auth/presence', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: status })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Durum kaydedilemedi.');
+    _accountUser = data.user || Object.assign({}, _accountUser, { presence_status: status });
+    updateAccountUI();
+    fetchDmThreads().then(renderDmThreads).catch(function() {});
+  } catch(e) {
+    showToast('error', 'Durum kaydedilemedi', e.message || 'Bağlantı hatası.', 4200);
+  }
+}
+
 updateAccountUI = function() {
   const user = _accountUser || {};
   const name = user.display_name || 'Hesap';
@@ -10598,6 +10730,7 @@ updateAccountUI = function() {
     verify.classList.toggle('verified', ok);
     verify.textContent = ok ? '✓ E-posta doğrulandı' : 'E-posta doğrulaması bekliyor';
   }
+  renderPresencePicker(user.presence_status || 'online');
   updateVerificationPanel();
 };
 
@@ -10812,7 +10945,7 @@ async function saveProfileSettings(options) {
     if (data.email_change_pending) {
       const targetEmail = data.pending_email || payload.email;
       if (data.email_delivery_configured === false) {
-        showToast('warning', 'E-posta servisi bağlı değil', 'Değişiklik beklemeye alındı; Cloudflare Email bağlanınca kod gönderilecek.', 6200);
+        showToast('warning', 'Kod gönderimi bekliyor', 'Değişiklik beklemeye alındı; e-postana kod göndermek için servis hazırlanıyor.', 6200);
       } else {
         showToast('warning', 'E-postanı onayla', 'Yeni adresine gelen 6 haneli kodu gir.', 5200);
       }
@@ -10821,7 +10954,7 @@ async function saveProfileSettings(options) {
     }
     closeProfileSettings();
     if (data.email_delivery_configured === false) {
-      showToast('warning', 'E-posta servisi bağlı değil', 'Profil kaydedildi; doğrulama e-postası Cloudflare Email bağlanınca gönderilecek.', 6200);
+      showToast('warning', 'Kod gönderimi bekliyor', 'Profil kaydedildi; e-postana kod göndermek için servis hazırlanıyor.', 6200);
     } else if (changingEmail && !_accountUser.email_verified) {
       showToast('warning', 'E-postanı doğrula', 'Yeni adresine gelen 6 haneli kodu ayarlardan onayla.', 6200);
     } else {
@@ -11015,7 +11148,7 @@ async function sendPasswordChangeCode() {
     focusFirstEmptyPasswordCodeCell();
   } catch(e) {
     setPasswordChangeStatus(e.message || 'Kod gönderilemedi.', 'error');
-    showToast('warning', 'Kod gönderilemedi', e.message || 'E-posta servisi bağlı değil.', 5600);
+    showToast('warning', 'Kod gönderilemedi', e.message || 'E-postana kod gönderemedik.', 5600);
   }
 }
 
@@ -11164,7 +11297,7 @@ async function sendVerificationCode(options) {
     return true;
   } catch(e) {
     setEmailCodeStatus(e.message || 'Kod gönderilemedi.', 'error');
-    if (!options.quiet) showToast('warning', 'Kod gönderilemedi', e.message || 'E-posta servisi bağlı değil.', 5600);
+    if (!options.quiet) showToast('warning', 'Kod gönderilemedi', e.message || 'E-postana kod gönderemedik.', 5600);
     return false;
   }
 }
@@ -11184,7 +11317,7 @@ async function resendEmailCode() {
       focusFirstEmptyEmailCodeCell();
     } catch(e) {
       setEmailCodeStatus(e.message || 'Kod gönderilemedi.', 'error');
-      showToast('warning', 'Kod gönderilemedi', e.message || 'E-posta servisi bağlı değil.', 5600);
+      showToast('warning', 'Kod gönderilemedi', e.message || 'E-postana kod gönderemedik.', 5600);
     }
     return;
   }
@@ -11382,22 +11515,22 @@ function formatAdminDate(value) {
 }
 
 async function logoutAccount() {
+  const token = getAppAuthToken();
+  document.body.classList.remove('app-ready');
+  closeAccountMenu();
+  resetAccountScopedState();
   try {
-    await apiFetch('/api/auth/logout', { method: 'POST' });
+    if (token) {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+    }
   } catch(e) {}
   clearAppAuthToken();
   _accountUser = null;
   _appStarted = false;
-  _chatStore = { chats: [] };
-  _chatStoreLoaded = false;
-  _chatStoreLoadPromise = null;
-  _activeChatId = '';
-  closeDmOverlay();
-  stopDmPolling();
-  closeAccountMenu();
   updateAccountUI();
-  renderChatHistory();
-  document.body.classList.remove('app-ready');
   showAccountAuth();
   showToast('info', 'Çıkış yapıldı', 'Bu cihazdaki oturum kapatıldı.', 2800);
 }
@@ -11961,13 +12094,30 @@ function dmAvatarHtml(user) {
 }
 
 function dmUserName(user) {
-  return String((user && (user.display_name || user.email)) || 'Hesap');
+  return String((user && user.display_name) || 'Hesap');
+}
+
+function dmPresenceStatus(user) {
+  const status = String((user && (user.effective_presence || user.presence_status)) || 'offline').toLowerCase();
+  return ['online', 'idle', 'dnd', 'offline'].indexOf(status) !== -1 ? status : 'offline';
+}
+
+function dmPresenceLabel(user) {
+  const status = dmPresenceStatus(user);
+  if (status === 'online') return 'Çevrimiçi';
+  if (status === 'idle') return 'Idle';
+  if (status === 'dnd') return 'DND';
+  return 'Çevrimdışı';
+}
+
+function dmAvatarWithPresenceHtml(user) {
+  const status = dmPresenceStatus(user);
+  return '<div class="dm-avatar-wrap"><div class="dm-avatar">' + dmAvatarHtml(user || {}) + '</div><span class="dm-presence-dot ' + escHtml(status) + '"></span></div>';
 }
 
 function dmSnippet(message) {
   if (!message) return 'Henüz mesaj yok.';
   if (message.forward) return 'İletilen AI mesajı';
-  if (message.kind === 'voice') return 'Ses mesajı';
   if (message.attachment) return message.attachment.name || 'Dosya';
   return String(message.body || '').replace(/\s+/g, ' ').trim() || 'Mesaj';
 }
@@ -12049,7 +12199,6 @@ function openDmOverlay(options) {
 function closeDmOverlay() {
   const overlay = document.getElementById('dmOverlay');
   if (overlay) overlay.classList.remove('active', 'chat-open');
-  stopDmVoiceRecording(true);
 }
 
 function showDmPeople() {
@@ -12092,11 +12241,11 @@ function renderDmThreads() {
     btn.className = 'dm-thread' + (row.user.id === _dmActiveUserId ? ' active' : '');
     btn.onclick = function() { openDmConversation(row.user.id); };
     btn.innerHTML =
-      '<div class="dm-avatar">' + dmAvatarHtml(row.user) + '</div>' +
+      dmAvatarWithPresenceHtml(row.user) +
       '<div style="min-width:0">' +
         '<div class="dm-thread-name">' + escHtml(dmUserName(row.user)) + '</div>' +
         '<div class="dm-thread-snippet">' + escHtml(dmSnippet(latest)) + '</div>' +
-        '<div class="dm-thread-email">' + escHtml(row.user.email || '') + '</div>' +
+        '<div class="dm-chat-subtitle">' + escHtml(dmPresenceLabel(row.user)) + '</div>' +
       '</div>' +
       (thread.unread_count ? '<span class="dm-unread">' + escHtml(Math.min(Number(thread.unread_count || 0), 99)) + '</span>' : '<span class="dm-time">' + escHtml(latest ? formatChatTime(latest.created_at) : '') + '</span>');
     list.appendChild(btn);
@@ -12107,6 +12256,13 @@ async function openDmConversation(userId) {
   _dmActiveUserId = userId;
   const overlay = document.getElementById('dmOverlay');
   if (overlay) overlay.classList.add('chat-open');
+  const chat = document.querySelector('.dm-chat');
+  if (chat) {
+    chat.classList.remove('switching');
+    void chat.offsetWidth;
+    chat.classList.add('switching');
+    setTimeout(function(){ chat.classList.remove('switching'); }, 340);
+  }
   renderDmThreads();
   const user = dmUserById(userId);
   renderDmHeader(user);
@@ -12119,10 +12275,10 @@ function renderDmHeader(user) {
   const host = document.getElementById('dmChatUser');
   if (!host) return;
   host.innerHTML =
-    '<div class="dm-avatar">' + dmAvatarHtml(user || {}) + '</div>' +
+    dmAvatarWithPresenceHtml(user || {}) +
     '<div style="min-width:0">' +
       '<div class="dm-chat-title">' + escHtml(user ? dmUserName(user) : 'Bir konuşma seç') + '</div>' +
-      '<div class="dm-chat-subtitle">' + escHtml(user ? (user.email || 'ReylAI hesabı') : 'Kayıtlı hesaplar burada görünür.') + '</div>' +
+      '<div class="dm-chat-subtitle">' + escHtml(user ? dmPresenceLabel(user) : 'Kayıtlı hesaplar burada görünür.') + '</div>' +
     '</div>';
 }
 
@@ -12198,7 +12354,7 @@ function renderDmAttachment(message) {
     return card;
   }
   if (mime.indexOf('audio/') === 0) {
-    card.innerHTML = '<div class="dm-attachment-name">Ses mesajı</div><audio controls src="' + escHtml(attachment.data_url || '') + '"></audio>';
+    card.innerHTML = '<div class="dm-attachment-name">Ses dosyası</div><audio controls src="' + escHtml(attachment.data_url || '') + '"></audio>';
     return card;
   }
   card.innerHTML =
@@ -12214,7 +12370,7 @@ function updateDmPendingBar() {
   if (!bar || !text) return;
   const parts = [];
   if (_dmPendingForward) parts.push('AI mesajı iletilecek');
-  if (_dmPendingAttachment) parts.push((_dmPendingAttachment.kind === 'voice' ? 'Ses kaydı' : (_dmPendingAttachment.name || 'Dosya')) + ' hazır');
+  if (_dmPendingAttachment) parts.push((_dmPendingAttachment.name || 'Dosya') + ' hazır');
   text.textContent = parts.join(' · ');
   bar.classList.toggle('active', parts.length > 0);
 }
@@ -12262,62 +12418,6 @@ async function handleDmFileSelect(file) {
   }
 }
 
-async function toggleDmVoiceRecording() {
-  if (_dmRecorder && _dmRecorder.state === 'recording') {
-    stopDmVoiceRecording(false);
-    return;
-  }
-  if (!navigator.mediaDevices || !window.MediaRecorder) {
-    showToast('warning', 'Ses kaydı yok', 'Tarayıcı bu cihazda ses kaydını desteklemiyor.', 4200);
-    return;
-  }
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    _dmVoiceChunks = [];
-    _dmVoiceStartedAt = Date.now();
-    _dmRecorder = new MediaRecorder(stream);
-    _dmRecorder.ondataavailable = function(e) {
-      if (e.data && e.data.size) _dmVoiceChunks.push(e.data);
-    };
-    _dmRecorder.onstop = async function() {
-      stream.getTracks().forEach(function(track) { track.stop(); });
-      const blob = new Blob(_dmVoiceChunks, { type: _dmRecorder.mimeType || 'audio/webm' });
-      const duration = Math.max(0, Date.now() - _dmVoiceStartedAt);
-      if (!blob.size) return;
-      if (blob.size > 650000) {
-        showToast('warning', 'Ses kaydı uzun', 'Kayıt çok büyük oldu; daha kısa bir ses kaydı gönder.', 5200);
-        return;
-      }
-      const dataUrl = await fileToDataUrl(blob);
-      _dmPendingAttachment = {
-        data_url: dataUrl,
-        name: 'ses-kaydi.webm',
-        mime_type: blob.type || 'audio/webm',
-        size: blob.size,
-        kind: 'voice',
-        voice_duration_ms: duration
-      };
-      updateDmPendingBar();
-      showToast('success', 'Ses kaydı hazır', 'Göndermek için mesaj düğmesine bas.', 2800);
-    };
-    _dmRecorder.start();
-    const btn = document.getElementById('dmVoiceBtn');
-    if (btn) btn.classList.add('dm-recording');
-    showToast('info', 'Kayıt başladı', 'Bitirmek için mikrofon düğmesine tekrar bas.', 3200);
-  } catch(e) {
-    showToast('warning', 'Mikrofon açılamadı', e.message || 'Mikrofon iznini kontrol et.', 5200);
-  }
-}
-
-function stopDmVoiceRecording(silent) {
-  const btn = document.getElementById('dmVoiceBtn');
-  if (btn) btn.classList.remove('dm-recording');
-  if (_dmRecorder && _dmRecorder.state === 'recording') {
-    try { _dmRecorder.stop(); } catch(e) {}
-    if (!silent) showToast('info', 'Kayıt işleniyor', 'Ses mesajı hazırlanıyor.', 2200);
-  }
-}
-
 async function sendDmMessage() {
   if (!_dmActiveUserId) {
     showToast('warning', 'Kişi seç', 'Mesaj göndermek için önce bir hesap seç.', 3200);
@@ -12326,15 +12426,13 @@ async function sendDmMessage() {
   const input = document.getElementById('dmTextInput');
   const body = String(input && input.value || '').trim();
   if (!body && !_dmPendingAttachment && !_dmPendingForward) {
-    showToast('warning', 'Mesaj boş', 'Bir metin, dosya, ses kaydı ya da iletilen AI mesajı ekle.', 3400);
+    showToast('warning', 'Mesaj boş', 'Bir metin, dosya ya da iletilen AI mesajı ekle.', 3400);
     return;
   }
   const payload = {
     recipient_id: _dmActiveUserId,
     body: body,
-    kind: _dmPendingAttachment && _dmPendingAttachment.kind === 'voice' ? 'voice' : undefined,
     attachment: _dmPendingAttachment,
-    voice_duration_ms: _dmPendingAttachment && _dmPendingAttachment.voice_duration_ms,
     forward: _dmPendingForward
   };
   try {

@@ -118,6 +118,8 @@ type UserRow = {
   password_change_sent_at?: string | null;
   password_change_token_hash?: string | null;
   password_change_token_expires_at?: string | null;
+  presence_status?: string | null;
+  presence_updated_at?: string | null;
 };
 
 type PublicUser = {
@@ -131,6 +133,8 @@ type PublicUser = {
   email_verified: boolean;
   email_verified_at: string;
   avatar_data_url: string;
+  presence_status: string;
+  presence_updated_at: string;
 };
 
 type AuthPayload = {
@@ -212,7 +216,9 @@ const USER_SELECT_COLUMNS = [
   "password_change_expires_at",
   "password_change_sent_at",
   "password_change_token_hash",
-  "password_change_token_expires_at"
+  "password_change_token_expires_at",
+  "presence_status",
+  "presence_updated_at"
 ].join(", ");
 
 export default {
@@ -269,6 +275,10 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
 
   if (path === "/api/auth/profile" && request.method === "PATCH") {
     return handleProfileUpdate(request, env);
+  }
+
+  if (path === "/api/auth/presence" && request.method === "PATCH") {
+    return handlePresenceUpdate(request, env);
   }
 
   if (path === "/api/auth/verification/send" && request.method === "POST") {
@@ -632,6 +642,25 @@ async function handleProfileUpdate(request: Request, env: Env): Promise<Response
   const user = await getUserById(env, authCtx.user.id);
   if (user !== null) return json({ success: true, user: publicUser(user as UserRow) });
   return json({ success: true, user: { ...authCtx.user, display_name: displayName } });
+}
+
+async function handlePresenceUpdate(request: Request, env: Env): Promise<Response> {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
+
+  const payload = await readJson<{ status?: string }>(request);
+  const status = normalizePresenceStatus(payload.status || "");
+  const now = new Date().toISOString();
+
+  await env.DB.prepare(
+    "UPDATE users SET presence_status = ?, presence_updated_at = ?, updated_at = ? WHERE id = ?"
+  ).bind(status, now, now, auth.user.id).run();
+
+  const user = await getUserById(env, auth.user.id);
+  return json({
+    success: true,
+    user: user ? publicUser(user) : { ...auth.user, presence_status: status, presence_updated_at: now }
+  });
 }
 
 async function handleVerificationSend(request: Request, env: Env): Promise<Response> {
@@ -1015,11 +1044,14 @@ async function handleChatHistoryDelete(env: Env, userId: string, rawChatId: stri
 async function handleDmUsers(request: Request, env: Env): Promise<Response> {
   const auth = await requireAuth(request, env);
   if (auth instanceof Response) return auth;
+  const now = new Date().toISOString();
 
   const rows = await env.DB.prepare(
-    "SELECT id, email, display_name, role, avatar_data_url, email_verified_at, created_at " +
-    "FROM users WHERE id <> ? ORDER BY lower(display_name), lower(email) LIMIT 300"
-  ).bind(auth.user.id).all<Record<string, unknown>>();
+    "SELECT u.id, u.email, u.display_name, u.role, u.avatar_data_url, u.email_verified_at, u.created_at, " +
+    "u.presence_status, u.presence_updated_at, MAX(s.last_seen_at) AS last_seen_at " +
+    "FROM users u LEFT JOIN sessions s ON s.user_id = u.id AND s.expires_at > ? " +
+    "WHERE u.id <> ? GROUP BY u.id ORDER BY lower(u.display_name), lower(u.email) LIMIT 300"
+  ).bind(now, auth.user.id).all<Record<string, unknown>>();
 
   const users = (rows.results || []).map(publicDmUser);
   return json({ success: true, users });
@@ -1029,6 +1061,7 @@ async function handleDmThreads(request: Request, env: Env): Promise<Response> {
   const auth = await requireAuth(request, env);
   if (auth instanceof Response) return auth;
   const userId = auth.user.id;
+  const now = new Date().toISOString();
 
   const rows = await env.DB.prepare(
     "SELECT CASE WHEN sender_id = ? THEN recipient_id ELSE sender_id END AS other_user_id, MAX(created_at) AS last_at " +
@@ -1041,8 +1074,11 @@ async function handleDmThreads(request: Request, env: Env): Promise<Response> {
     const otherId = String(row.other_user_id || "");
     if (!otherId) continue;
     const other = await env.DB.prepare(
-      "SELECT id, email, display_name, role, avatar_data_url, email_verified_at, created_at FROM users WHERE id = ?"
-    ).bind(otherId).first<Record<string, unknown>>();
+      "SELECT u.id, u.email, u.display_name, u.role, u.avatar_data_url, u.email_verified_at, u.created_at, " +
+      "u.presence_status, u.presence_updated_at, MAX(s.last_seen_at) AS last_seen_at " +
+      "FROM users u LEFT JOIN sessions s ON s.user_id = u.id AND s.expires_at > ? " +
+      "WHERE u.id = ? GROUP BY u.id"
+    ).bind(now, otherId).first<Record<string, unknown>>();
     if (!other) continue;
     const latest = await env.DB.prepare(
       "SELECT * FROM dm_messages WHERE deleted_at IS NULL AND " +
@@ -1111,7 +1147,7 @@ async function handleDmMessageSend(request: Request, env: Env): Promise<Response
   }
 
   const now = new Date().toISOString();
-  const kind = hasForward ? "forward" : (String(payload.kind || "").trim() === "voice" || attachment.mime_type.startsWith("audio/") ? "voice" : (hasAttachment ? "file" : "text"));
+  const kind = hasForward ? "forward" : (hasAttachment ? "file" : "text");
   const id = crypto.randomUUID();
   await env.DB.prepare(
     "INSERT INTO dm_messages (id, sender_id, recipient_id, body, kind, attachment_data_url, attachment_name, attachment_mime_type, attachment_size, voice_duration_ms, forward_json, created_at) " +
@@ -1132,6 +1168,10 @@ async function handleDmMessageSend(request: Request, env: Env): Promise<Response
   ).run();
 
   const row = await env.DB.prepare("SELECT * FROM dm_messages WHERE id = ?").bind(id).first<DmMessageRow>();
+  const unread = await env.DB.prepare(
+    "SELECT COUNT(*) AS count FROM dm_messages WHERE recipient_id = ? AND read_at IS NULL AND deleted_at IS NULL"
+  ).bind(recipientId).first<{ count: number }>();
+  await sendDmNotificationEmail(env, auth.user, recipient, Number(unread?.count || 1), row ? publicDmMessage(row, senderId) : null);
   return json({ success: true, message: row ? publicDmMessage(row, senderId) : null }, 201);
 }
 
@@ -1260,19 +1300,28 @@ function publicUser(user: UserRow): PublicUser {
     is_admin: role === "admin" || normalizeEmail(user.email) === ADMIN_EMAIL,
     email_verified: Boolean(user.email_verified_at),
     email_verified_at: user.email_verified_at || "",
-    avatar_data_url: user.avatar_data_url || ""
+    avatar_data_url: user.avatar_data_url || "",
+    presence_status: normalizePresenceStatus(user.presence_status || ""),
+    presence_updated_at: user.presence_updated_at || ""
   };
 }
 
 async function getDmUserById(env: Env, id: string): Promise<Record<string, unknown> | null> {
+  const now = new Date().toISOString();
   return await env.DB.prepare(
-    "SELECT id, email, display_name, role, avatar_data_url, email_verified_at, created_at FROM users WHERE id = ?"
-  ).bind(id).first<Record<string, unknown>>();
+    "SELECT u.id, u.email, u.display_name, u.role, u.avatar_data_url, u.email_verified_at, u.created_at, " +
+    "u.presence_status, u.presence_updated_at, MAX(s.last_seen_at) AS last_seen_at " +
+    "FROM users u LEFT JOIN sessions s ON s.user_id = u.id AND s.expires_at > ? " +
+    "WHERE u.id = ? GROUP BY u.id"
+  ).bind(now, id).first<Record<string, unknown>>();
 }
 
 function publicDmUser(user: Record<string, unknown>): Record<string, unknown> {
   const email = String(user.email || "");
   const role = effectiveRole(email, String(user.role || ""));
+  const presenceStatus = normalizePresenceStatus(String(user.presence_status || ""));
+  const lastSeenAt = String(user.last_seen_at || "");
+  const effectivePresence = effectivePresenceStatus(presenceStatus, lastSeenAt);
   return {
     id: String(user.id || ""),
     email,
@@ -1282,7 +1331,12 @@ function publicDmUser(user: Record<string, unknown>): Record<string, unknown> {
     is_admin: role === "admin" || normalizeEmail(email) === ADMIN_EMAIL,
     email_verified: Boolean(user.email_verified_at),
     avatar_data_url: String(user.avatar_data_url || ""),
-    created_at: String(user.created_at || "")
+    created_at: String(user.created_at || ""),
+    presence_status: presenceStatus,
+    presence_updated_at: String(user.presence_updated_at || ""),
+    last_seen_at: lastSeenAt,
+    effective_presence: effectivePresence,
+    is_active: effectivePresence !== "offline"
   };
 }
 
@@ -1314,6 +1368,17 @@ function publicDmMessage(message: DmMessageRow, currentUserId: string): Record<s
     read_at: message.read_at || "",
     outgoing: message.sender_id === currentUserId
   };
+}
+
+function normalizePresenceStatus(value: string): string {
+  const status = String(value || "online").trim().toLowerCase();
+  return ["online", "idle", "dnd"].includes(status) ? status : "online";
+}
+
+function effectivePresenceStatus(status: string, lastSeenAt: string): string {
+  const seenAt = lastSeenAt ? Date.parse(lastSeenAt) : 0;
+  if (!seenAt || Date.now() - seenAt > 2 * 60 * 1000) return "offline";
+  return normalizePresenceStatus(status);
 }
 
 async function requireAdmin(request: Request, env: Env): Promise<AuthContext | Response> {
@@ -1395,7 +1460,7 @@ function validateAvatarDataUrl(value: string): string {
 async function sendVerificationCode(env: Env, user: UserRow): Promise<{ sent: boolean; configured: boolean; error?: string }> {
   const binding = getEmailBinding(env);
   if (!binding) {
-    return { sent: false, configured: false, error: "Cloudflare Email Sending henüz bağlı değil." };
+    return { sent: false, configured: false, error: "E-postana kod göndermek için servis henüz hazır değil." };
   }
 
   const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, "0");
@@ -1430,7 +1495,7 @@ async function sendEmailChangeCode(env: Env, user: UserRow, nextEmail: string): 
   const email = normalizeEmail(nextEmail);
   const binding = getEmailBinding(env);
   if (!binding) {
-    return { sent: false, configured: false, error: "Cloudflare Email Sending henüz bağlı değil." };
+    return { sent: false, configured: false, error: "E-postana kod göndermek için servis henüz hazır değil." };
   }
 
   const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, "0");
@@ -1464,7 +1529,7 @@ async function sendEmailChangeCode(env: Env, user: UserRow, nextEmail: string): 
 async function sendPasswordChangeCode(env: Env, user: UserRow): Promise<{ sent: boolean; configured: boolean; error?: string }> {
   const binding = getEmailBinding(env);
   if (!binding) {
-    return { sent: false, configured: false, error: "Cloudflare Email Sending henüz bağlı değil." };
+    return { sent: false, configured: false, error: "E-postana kod göndermek için servis henüz hazır değil." };
   }
 
   const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, "0");
@@ -1494,6 +1559,86 @@ async function sendPasswordChangeCode(env: Env, user: UserRow): Promise<{ sent: 
     }));
     return { sent: false, configured: true, error: "Şifre değişiklik e-postası gönderilemedi." };
   }
+}
+
+async function sendDmNotificationEmail(
+  env: Env,
+  sender: PublicUser,
+  recipient: Record<string, unknown>,
+  unreadCount: number,
+  message: Record<string, unknown> | null
+): Promise<void> {
+  const binding = getEmailBinding(env);
+  if (!binding) return;
+
+  const to = normalizeEmail(String(recipient.email || ""));
+  if (!EMAIL_RE.test(to)) return;
+
+  const senderName = sender.display_name || "Bir kullanıcı";
+  const count = Math.max(1, Math.floor(unreadCount || 1));
+  const snippet = dmEmailSnippet(message);
+  const subject = `${senderName} sana mesaj gönderdi`;
+  const countText = `${count} okunmamış mesajın var.`;
+
+  try {
+    await binding.send({
+      to,
+      from: { email: NO_REPLY_FROM, name: "ReylAI" },
+      subject,
+      html: dmNotificationEmailHtml(senderName, countText, snippet),
+      text: `${senderName} sana mesaj gönderdi. ${countText}${snippet ? ` Mesaj: ${snippet}` : ""}`
+    });
+  } catch (error) {
+    console.error(JSON.stringify({
+      level: "error",
+      message: "dm notification email failed",
+      detail: error instanceof Error ? error.message : String(error)
+    }));
+  }
+}
+
+function dmEmailSnippet(message: Record<string, unknown> | null): string {
+  if (!message) return "";
+  if (message.forward) return "AI mesajı iletti.";
+  if (message.attachment) return "Dosya gönderdi.";
+  return String(message.body || "").replace(/\s+/g, " ").trim().slice(0, 220);
+}
+
+function dmNotificationEmailHtml(senderName: string, countText: string, snippet: string): string {
+  const safeName = escapeHtml(senderName);
+  const safeCount = escapeHtml(countText);
+  const safeSnippet = escapeHtml(snippet);
+  return `<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>ReylAI mesaj bildirimi</title>
+  </head>
+  <body style="margin:0;background:#030712;color:#eef5ff;font-family:Inter,Segoe UI,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:radial-gradient(circle at 16% 0%,rgba(37,99,235,.24),transparent 34%),linear-gradient(135deg,#061a3a,#030712);padding:32px 14px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;border:1px solid rgba(255,255,255,.16);border-radius:28px;background:rgba(18,31,58,.86);box-shadow:0 30px 90px rgba(0,0,0,.38);overflow:hidden;">
+            <tr>
+              <td style="padding:28px 28px 18px;">
+                <div style="font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:#93c5fd;font-weight:900;">ReylAI DM</div>
+                <h1 style="margin:10px 0 8px;font-size:28px;line-height:1.12;color:#fff;">${safeName} sana mesaj gönderdi</h1>
+                <p style="margin:0;color:#c7d8f2;font-size:15px;line-height:1.65;">${safeCount}</p>
+              </td>
+            </tr>
+            ${safeSnippet ? `<tr><td style="padding:10px 28px 28px;"><div style="border:1px solid rgba(96,165,250,.24);border-radius:22px;background:linear-gradient(135deg,rgba(96,165,250,.16),rgba(15,23,42,.54));padding:18px;color:#eef5ff;font-size:15px;line-height:1.6;">${safeSnippet}</div></td></tr>` : ""}
+            <tr>
+              <td style="padding:0 28px 30px;color:#8ea0bd;font-size:13px;line-height:1.6;">
+                Mesajlarını ReylAI içindeki DM ekranından görebilirsin.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
 }
 
 function getEmailBinding(env: Env): EmailBinding | null {
