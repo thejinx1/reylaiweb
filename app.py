@@ -4866,6 +4866,18 @@ body.account-menu-open .account-menu {
   pointer-events: auto;
 }
 
+html.chat-route-lock,
+body.chat-route-lock {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body.chat-route-lock #libraryScreen {
+  max-height: 100svh;
+  overflow: hidden;
+}
+
 .chat-sidebar {
   position: fixed;
   top: 0;
@@ -15529,6 +15541,35 @@ function deleteChat(chatId) {
   renderChatHistory();
 }
 
+function setChatRouteLock(locked) {
+  document.documentElement.classList.toggle('chat-route-lock', !!locked);
+  document.body.classList.toggle('chat-route-lock', !!locked);
+}
+
+function scrollToChatRouteAnchor(options) {
+  options = options || {};
+  const top = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+  if (top <= 2) return;
+  window.scrollTo({
+    top: 0,
+    left: 0,
+    behavior: 'auto'
+  });
+}
+
+function focusChatSidebar() {
+  const sidebar = document.getElementById('chatSidebar');
+  if (!sidebar) return;
+  if (!sidebar.hasAttribute('tabindex')) sidebar.setAttribute('tabindex', '-1');
+  requestAnimationFrame(function() {
+    try {
+      sidebar.focus({ preventScroll: true });
+    } catch (_e) {
+      sidebar.focus();
+    }
+  });
+}
+
 function openChatSidebar(options) {
   options = options || {};
   if (!options.routeOpen && _currentRoute !== 'chat') {
@@ -15542,11 +15583,14 @@ function openChatSidebar(options) {
   }
   const sidebar = document.getElementById('chatSidebar');
   if (!sidebar) return;
+  if (options.routeOpen) scrollToChatRouteAnchor(options);
+  setChatRouteLock(true);
   renderChatHistory();
   loadChatStoreFromServer().then(renderChatHistory);
   sidebar.classList.remove('collapsed');
   const backdrop = document.getElementById('chatHistoryBackdrop');
   if (backdrop) backdrop.classList.add('active');
+  focusChatSidebar();
 }
 
 function closeChatSidebar(options) {
@@ -15555,6 +15599,7 @@ function closeChatSidebar(options) {
   if (sidebar) sidebar.classList.add('collapsed');
   const backdrop = document.getElementById('chatHistoryBackdrop');
   if (backdrop) backdrop.classList.remove('active');
+  setChatRouteLock(false);
   if (_currentRoute === 'chat' && !options.preserveRoute) {
     navigateApp('/library', { replace: true });
   }
