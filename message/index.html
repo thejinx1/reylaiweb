@@ -1148,6 +1148,30 @@ body.app-ready #libraryScreen {
   font-weight: 700;
 }
 
+.account-legal-note {
+  display: none;
+  margin-top: -2px;
+  color: rgba(226,232,240,0.62);
+  font-size: 11px;
+  line-height: 1.55;
+  font-weight: 700;
+}
+
+.account-auth-screen.signup-mode .account-legal-note {
+  display: block;
+}
+
+.account-legal-note a {
+  color: #bfdbfe;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(191,219,254,0.42);
+}
+
+.account-legal-note a:hover {
+  color: #fff;
+  border-bottom-color: rgba(255,255,255,0.72);
+}
+
 .turnstile-wrap {
   min-height: 76px;
   display: grid;
@@ -8973,6 +8997,9 @@ body::after,
         <div class="turnstile-note" id="turnstileNote">Cloudflare doğrulaması hazırlanıyor...</div>
       </div>
       <div class="account-auth-error" id="accountAuthError"></div>
+      <div class="account-legal-note" id="accountLegalNote">
+        Kayıt olarak <a href="/terms">Kullanım Şartları</a> ve <a href="/privacy">Gizlilik Politikası</a>'nı kabul etmiş olursun.
+      </div>
       <button class="account-submit" id="accountSubmitBtn" type="submit">Giriş yap</button>
       <div class="account-switch-note">
         <span id="accountSwitchText">Hesabın yok mu?</span>
