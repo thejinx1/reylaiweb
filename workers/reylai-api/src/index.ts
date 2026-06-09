@@ -39,10 +39,96 @@ const GEMINI_DEFAULT_MODEL = "gemini-3.5-flash";
 const GEMINI_DEFAULT_FALLBACK_MODELS = "gemini-flash-latest,gemini-2.5-flash";
 const GEMINI_PRIMARY_RETRY_DELAYS_MS = [0, 700, 1800];
 const GEMINI_FALLBACK_RETRY_DELAYS_MS = [0, 900];
-const MEB_SCHOOLS_DEFAULT_CSV_URL = "https://raw.githubusercontent.com/ensarkovankaya/meb-okullar/master/meb-okullar.csv";
+const MEB_SCHOOLS_DEFAULT_API_URL = "https://www.meb.gov.tr/baglantilar/okullar/okullar_ajax.php";
+const MEB_SCHOOLS_CACHE_MS = 6 * 60 * 60 * 1000;
+const MEB_SCHOOLS_FETCH_LIMIT = 100000;
 const SCHOOL_CHANGE_PENDING = "pending";
 const SCHOOL_CHANGE_APPROVED = "approved";
 const SCHOOL_CHANGE_REJECTED = "rejected";
+
+const TURKEY_PROVINCES = [
+  { name: "Adana", code: "01" },
+  { name: "Adıyaman", code: "02" },
+  { name: "Afyonkarahisar", code: "03" },
+  { name: "Ağrı", code: "04" },
+  { name: "Amasya", code: "05" },
+  { name: "Ankara", code: "06" },
+  { name: "Antalya", code: "07" },
+  { name: "Artvin", code: "08" },
+  { name: "Aydın", code: "09" },
+  { name: "Balıkesir", code: "10" },
+  { name: "Bilecik", code: "11" },
+  { name: "Bingöl", code: "12" },
+  { name: "Bitlis", code: "13" },
+  { name: "Bolu", code: "14" },
+  { name: "Burdur", code: "15" },
+  { name: "Bursa", code: "16" },
+  { name: "Çanakkale", code: "17" },
+  { name: "Çankırı", code: "18" },
+  { name: "Çorum", code: "19" },
+  { name: "Denizli", code: "20" },
+  { name: "Diyarbakır", code: "21" },
+  { name: "Edirne", code: "22" },
+  { name: "Elazığ", code: "23" },
+  { name: "Erzincan", code: "24" },
+  { name: "Erzurum", code: "25" },
+  { name: "Eskişehir", code: "26" },
+  { name: "Gaziantep", code: "27" },
+  { name: "Giresun", code: "28" },
+  { name: "Gümüşhane", code: "29" },
+  { name: "Hakkari", code: "30" },
+  { name: "Hatay", code: "31" },
+  { name: "Isparta", code: "32" },
+  { name: "Mersin", code: "33" },
+  { name: "İstanbul", code: "34" },
+  { name: "İzmir", code: "35" },
+  { name: "Kars", code: "36" },
+  { name: "Kastamonu", code: "37" },
+  { name: "Kayseri", code: "38" },
+  { name: "Kırklareli", code: "39" },
+  { name: "Kırşehir", code: "40" },
+  { name: "Kocaeli", code: "41" },
+  { name: "Konya", code: "42" },
+  { name: "Kütahya", code: "43" },
+  { name: "Malatya", code: "44" },
+  { name: "Manisa", code: "45" },
+  { name: "Kahramanmaraş", code: "46" },
+  { name: "Mardin", code: "47" },
+  { name: "Muğla", code: "48" },
+  { name: "Muş", code: "49" },
+  { name: "Nevşehir", code: "50" },
+  { name: "Niğde", code: "51" },
+  { name: "Ordu", code: "52" },
+  { name: "Rize", code: "53" },
+  { name: "Sakarya", code: "54" },
+  { name: "Samsun", code: "55" },
+  { name: "Siirt", code: "56" },
+  { name: "Sinop", code: "57" },
+  { name: "Sivas", code: "58" },
+  { name: "Tekirdağ", code: "59" },
+  { name: "Tokat", code: "60" },
+  { name: "Trabzon", code: "61" },
+  { name: "Tunceli", code: "62" },
+  { name: "Şanlıurfa", code: "63" },
+  { name: "Uşak", code: "64" },
+  { name: "Van", code: "65" },
+  { name: "Yozgat", code: "66" },
+  { name: "Zonguldak", code: "67" },
+  { name: "Aksaray", code: "68" },
+  { name: "Bayburt", code: "69" },
+  { name: "Karaman", code: "70" },
+  { name: "Kırıkkale", code: "71" },
+  { name: "Batman", code: "72" },
+  { name: "Şırnak", code: "73" },
+  { name: "Bartın", code: "74" },
+  { name: "Ardahan", code: "75" },
+  { name: "Iğdır", code: "76" },
+  { name: "Yalova", code: "77" },
+  { name: "Karabük", code: "78" },
+  { name: "Kilis", code: "79" },
+  { name: "Osmaniye", code: "80" },
+  { name: "Düzce", code: "81" }
+];
 
 type Book = {
   book_id?: string;
@@ -147,6 +233,7 @@ type UserRow = {
 
 type SchoolRecord = {
   id: string;
+  official_id: string;
   country: string;
   province: string;
   province_code: string;
@@ -217,8 +304,22 @@ type SchoolReviewPayload = {
   action?: string;
 };
 
-let schoolsCache: { url: string; loadedAt: number; schools: SchoolRecord[] } | null = null;
+type MebSchoolApiRow = {
+  OKUL_ADI?: string;
+  HOST?: string;
+  YOL?: string;
+};
+
+type MebSchoolsApiResponse = {
+  data?: MebSchoolApiRow[];
+  recordsTotal?: number;
+  recordsFiltered?: number;
+};
+
+let schoolsCache: { source: string; loadedAt: number; schools: SchoolRecord[] } | null = null;
 let schoolsLoadPromise: Promise<SchoolRecord[]> | null = null;
+const schoolFilterCache = new Map<string, { loadedAt: number; schools: SchoolRecord[] }>();
+const schoolFilterPromises = new Map<string, Promise<SchoolRecord[]>>();
 
 type VerificationPayload = {
   code?: string;
@@ -695,24 +796,17 @@ function handleAuthConfig(env: Env): Response {
 }
 
 async function handleSchoolProvinces(env: Env): Promise<Response> {
-  const schools = await loadSchools(env);
-  const map = new Map<string, { name: string; code: string; count: number }>();
-  for (const school of schools) {
-    const key = school.province.toLocaleLowerCase("tr-TR");
-    const existing = map.get(key) || { name: school.province, code: school.province_code, count: 0 };
-    existing.count += 1;
-    map.set(key, existing);
-  }
+  void env;
   return json({
     success: true,
-    provinces: Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, "tr-TR"))
+    provinces: TURKEY_PROVINCES.map((province) => ({ ...province, count: 0 }))
   }, 200, { "cache-control": "public, max-age=86400" });
 }
 
 async function handleSchoolDistricts(url: URL, env: Env): Promise<Response> {
   const province = normalizeSchoolText(url.searchParams.get("province") || "");
   if (!province) return json({ success: false, error: "İl seçilmedi." }, 400);
-  const schools = await loadSchools(env);
+  const schools = await loadSchoolsForFilter(env, { province });
   const provinceKey = schoolLookupKey(province);
   const map = new Map<string, { name: string; code: string; count: number }>();
   for (const school of schools) {
@@ -733,9 +827,11 @@ async function handleSchoolsSearch(url: URL, env: Env): Promise<Response> {
   const district = normalizeSchoolText(url.searchParams.get("district") || "");
   const q = schoolLookupKey(url.searchParams.get("q") || "");
   const limit = Math.max(1, Math.min(Number(url.searchParams.get("limit") || 250) || 250, 500));
+  if (!province) return json({ success: false, error: "İl seçilmedi." }, 400);
+  if (!district) return json({ success: false, error: "İlçe seçilmedi." }, 400);
   const provinceKey = schoolLookupKey(province);
   const districtKey = schoolLookupKey(district);
-  const schools = await loadSchools(env);
+  const schools = await loadSchoolsForFilter(env, { province });
   const filtered = schools.filter((school) => {
     if (provinceKey && schoolLookupKey(school.province) !== provinceKey) return false;
     if (districtKey && schoolLookupKey(school.district) !== districtKey) return false;
@@ -987,7 +1083,7 @@ async function handleSchoolSelect(request: Request, env: Env): Promise<Response>
     return json({ success: true, pending_review: false, user: freshUser ? publicUser(freshUser) : auth.user });
   }
 
-  if (user.school_id === school.id) {
+  if (schoolsReferToSameSchool(publicSchoolFromRow(user), school)) {
     return json({ success: true, pending_review: false, user: publicUser(user) });
   }
 
@@ -1854,10 +1950,11 @@ async function handleDmUsers(request: Request, env: Env): Promise<Response> {
     "u.school_id, u.school_name, u.school_province, u.school_province_code, u.school_district, u.school_district_code, " +
     "u.school_type, u.school_website, u.school_selected_at, u.presence_status, u.presence_updated_at, MAX(s.last_seen_at) AS last_seen_at " +
     "FROM users u LEFT JOIN sessions s ON s.user_id = u.id AND s.expires_at > ? " +
-    "WHERE u.id <> ? AND u.school_id = ? GROUP BY u.id ORDER BY lower(u.display_name), lower(u.email) LIMIT 300"
-  ).bind(now, auth.user.id, auth.user.school?.id || "").all<Record<string, unknown>>();
+    "WHERE u.id <> ? AND u.school_id IS NOT NULL AND u.school_name IS NOT NULL " +
+    "GROUP BY u.id ORDER BY lower(u.display_name), lower(u.email) LIMIT 1000"
+  ).bind(now, auth.user.id).all<Record<string, unknown>>();
 
-  const users = (rows.results || []).map(publicDmUser);
+  const users = (rows.results || []).filter((row) => schoolsReferToSameSchool(auth.user.school, row)).slice(0, 300).map(publicDmUser);
   return json({ success: true, users });
 }
 
@@ -1884,9 +1981,9 @@ async function handleDmThreads(request: Request, env: Env): Promise<Response> {
       "u.school_id, u.school_name, u.school_province, u.school_province_code, u.school_district, u.school_district_code, " +
       "u.school_type, u.school_website, u.school_selected_at, u.presence_status, u.presence_updated_at, MAX(s.last_seen_at) AS last_seen_at " +
       "FROM users u LEFT JOIN sessions s ON s.user_id = u.id AND s.expires_at > ? " +
-      "WHERE u.id = ? AND u.school_id = ? GROUP BY u.id"
-    ).bind(now, otherId, auth.user.school?.id || "").first<Record<string, unknown>>();
-    if (!other) continue;
+      "WHERE u.id = ? GROUP BY u.id"
+    ).bind(now, otherId).first<Record<string, unknown>>();
+    if (!other || !schoolsReferToSameSchool(auth.user.school, other)) continue;
     const latest = await env.DB.prepare(
       "SELECT * FROM dm_messages WHERE deleted_at IS NULL AND " +
       "((sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?)) " +
@@ -2809,23 +2906,30 @@ function optionalEnv(env: Env, key: string): string {
 }
 
 async function loadSchools(env: Env): Promise<SchoolRecord[]> {
-  const url = optionalEnv(env, "MEB_SCHOOLS_CSV_URL") || MEB_SCHOOLS_DEFAULT_CSV_URL;
+  const source = optionalEnv(env, "MEB_SCHOOLS_API_URL") || MEB_SCHOOLS_DEFAULT_API_URL;
   const now = Date.now();
-  if (schoolsCache && schoolsCache.url === url && now - schoolsCache.loadedAt < 24 * 60 * 60 * 1000) {
+  if (schoolsCache && schoolsCache.source === source && now - schoolsCache.loadedAt < MEB_SCHOOLS_CACHE_MS) {
     return schoolsCache.schools;
   }
   if (schoolsLoadPromise) return schoolsLoadPromise;
   schoolsLoadPromise = (async () => {
-    const response = await fetch(url, {
-      cf: { cacheTtl: 86400, cacheEverything: true },
-      headers: { accept: "text/csv,*/*" }
-    });
-    if (!response.ok) {
-      throw new Error(`Okul listesi alınamadı (${response.status}).`);
+    const first = await fetchMebSchoolsPage(env, { start: 0, length: MEB_SCHOOLS_FETCH_LIMIT });
+    const rows = [...(first.data || [])];
+    const total = Math.max(Number(first.recordsFiltered || 0), Number(first.recordsTotal || 0), rows.length);
+    let start = rows.length;
+    while (start > 0 && start < total && rows.length < 150000) {
+      const page = await fetchMebSchoolsPage(env, {
+        start,
+        length: Math.min(MEB_SCHOOLS_FETCH_LIMIT, total - start)
+      });
+      const pageRows = page.data || [];
+      if (!pageRows.length) break;
+      rows.push(...pageRows);
+      start += pageRows.length;
     }
-    const csv = await response.text();
-    const schools = parseSchoolsCsv(csv);
-    schoolsCache = { url, loadedAt: Date.now(), schools };
+    const schools = parseMebSchoolRows(rows);
+    if (!schools.length) throw new Error("MEB okul listesi boş döndü.");
+    schoolsCache = { source, loadedAt: Date.now(), schools };
     return schools;
   })();
   try {
@@ -2835,80 +2939,158 @@ async function loadSchools(env: Env): Promise<SchoolRecord[]> {
   }
 }
 
-function parseSchoolsCsv(csv: string): SchoolRecord[] {
-  const rows = parseCsvRows(csv);
-  if (rows.length <= 1) return [];
-  const header = rows[0].map((item) => schoolLookupKey(item));
-  const index = (name: string) => header.indexOf(schoolLookupKey(name));
-  const countryIndex = index("ulke_adi");
-  const provinceIndex = index("il_adi");
-  const provinceCodeIndex = index("il_kodu");
-  const districtIndex = index("ilce_adi");
-  const districtCodeIndex = index("ilce_kodu");
-  const nameIndex = index("okul_adi");
-  const websiteIndex = index("okul_website");
-  const typeIndex = index("tip");
+async function loadSchoolsForFilter(env: Env, options: { province?: string; district?: string; search?: string }): Promise<SchoolRecord[]> {
+  const source = optionalEnv(env, "MEB_SCHOOLS_API_URL") || MEB_SCHOOLS_DEFAULT_API_URL;
+  const provinceCode = mebProvinceCode(options.province || "");
+  const districtCode = mebCode(options.district || "");
+  const search = normalizeSchoolText(options.search || "");
+  const cacheKey = [source, provinceCode, districtCode, schoolLookupKey(search)].join("|");
+  const now = Date.now();
+  const cached = schoolFilterCache.get(cacheKey);
+  if (cached && now - cached.loadedAt < MEB_SCHOOLS_CACHE_MS) return cached.schools;
+  const pending = schoolFilterPromises.get(cacheKey);
+  if (pending) return pending;
+  const promise = (async () => {
+    const first = await fetchMebSchoolsPage(env, {
+      start: 0,
+      length: MEB_SCHOOLS_FETCH_LIMIT,
+      province: provinceCode,
+      district: districtCode,
+      search
+    });
+    const rows = [...(first.data || [])];
+    const total = Math.max(Number(first.recordsFiltered || 0), Number(first.recordsTotal || 0), rows.length);
+    let start = rows.length;
+    while (start > 0 && start < total && rows.length < 150000) {
+      const page = await fetchMebSchoolsPage(env, {
+        start,
+        length: Math.min(MEB_SCHOOLS_FETCH_LIMIT, total - start),
+        province: provinceCode,
+        district: districtCode,
+        search
+      });
+      const pageRows = page.data || [];
+      if (!pageRows.length) break;
+      rows.push(...pageRows);
+      start += pageRows.length;
+    }
+    const schools = parseMebSchoolRows(rows);
+    schoolFilterCache.set(cacheKey, { loadedAt: Date.now(), schools });
+    return schools;
+  })();
+  schoolFilterPromises.set(cacheKey, promise);
+  try {
+    return await promise;
+  } finally {
+    schoolFilterPromises.delete(cacheKey);
+  }
+}
+
+async function fetchMebSchoolsPage(
+  env: Env,
+  options: { start: number; length: number; province?: string; district?: string; search?: string }
+): Promise<MebSchoolsApiResponse> {
+  const response = await fetch(optionalEnv(env, "MEB_SCHOOLS_API_URL") || MEB_SCHOOLS_DEFAULT_API_URL, {
+    method: "POST",
+    headers: {
+      accept: "application/json, text/javascript, */*; q=0.01",
+      "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+      origin: "https://www.meb.gov.tr",
+      referer: "https://www.meb.gov.tr/baglantilar/okullar/",
+      "user-agent": "Mozilla/5.0 ReylAI School Sync",
+      "x-requested-with": "XMLHttpRequest"
+    },
+    body: buildMebSchoolsPayload(options)
+  });
+  if (!response.ok) throw new Error(`MEB okul listesi alınamadı (${response.status}).`);
+  const data = await response.json<MebSchoolsApiResponse>();
+  if (!Array.isArray(data.data)) throw new Error("MEB okul listesi beklenmeyen formatta döndü.");
+  return data;
+}
+
+function buildMebSchoolsPayload(options: { start: number; length: number; province?: string; district?: string; search?: string }): URLSearchParams {
+  const payload = new URLSearchParams();
+  payload.set("draw", "1");
+  for (let index = 0; index < 3; index += 1) {
+    payload.set(`columns[${index}][data]`, "OKUL_ADI");
+    payload.set(`columns[${index}][name]`, "");
+    payload.set(`columns[${index}][searchable]`, "true");
+    payload.set(`columns[${index}][orderable]`, "true");
+    payload.set(`columns[${index}][search][value]`, "");
+    payload.set(`columns[${index}][search][regex]`, "false");
+  }
+  payload.set("order[0][column]", "0");
+  payload.set("order[0][dir]", "asc");
+  payload.set("order[0][name]", "");
+  payload.set("start", String(Math.max(0, options.start || 0)));
+  payload.set("length", String(Math.max(1, options.length || 100)));
+  payload.set("search[value]", normalizeSchoolText(options.search || ""));
+  payload.set("search[regex]", "false");
+  payload.set("il", mebProvinceCode(options.province || ""));
+  payload.set("ilce", mebCode(options.district || ""));
+  return payload;
+}
+
+function parseMebSchoolRows(rows: MebSchoolApiRow[]): SchoolRecord[] {
   const schools: SchoolRecord[] = [];
-  for (let rowIndex = 1; rowIndex < rows.length; rowIndex += 1) {
-    const row = rows[rowIndex];
-    const province = normalizeSchoolText(row[provinceIndex] || "");
-    const district = normalizeSchoolText(row[districtIndex] || "");
-    const name = normalizeSchoolText(row[nameIndex] || "");
-    if (!province || !district || !name) continue;
+  const seen = new Set<string>();
+  for (const row of rows) {
+    const parsed = parseMebSchoolName(row.OKUL_ADI || "");
+    if (!parsed) continue;
+    const officialId = normalizeSchoolText(row.YOL || "");
+    const officialParts = officialId.split("/");
+    const host = normalizeSchoolText(row.HOST || "").replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
     const school: SchoolRecord = {
       id: "",
-      country: normalizeSchoolText(row[countryIndex] || "Türkiye") || "Türkiye",
-      province,
-      province_code: normalizeSchoolText(row[provinceCodeIndex] || ""),
-      district,
-      district_code: normalizeSchoolText(row[districtCodeIndex] || ""),
-      name,
-      website: normalizeSchoolText(row[websiteIndex] || ""),
-      type: normalizeSchoolText(row[typeIndex] || "")
+      official_id: officialId,
+      country: "Türkiye",
+      province: parsed.province,
+      province_code: normalizeSchoolText(officialParts[0] || provinceCodeForName(parsed.province)),
+      district: parsed.district,
+      district_code: normalizeSchoolText(officialParts[1] || ""),
+      name: parsed.name,
+      website: host ? `https://${host}.meb.k12.tr/` : "",
+      type: ""
     };
     school.id = makeSchoolId(school);
+    if (seen.has(school.id)) continue;
+    seen.add(school.id);
     schools.push(school);
   }
   return schools;
 }
 
-function parseCsvRows(csv: string): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let cell = "";
-  let quoted = false;
-  for (let index = 0; index < csv.length; index += 1) {
-    const char = csv[index];
-    if (quoted) {
-      if (char === '"' && csv[index + 1] === '"') {
-        cell += '"';
-        index += 1;
-      } else if (char === '"') {
-        quoted = false;
-      } else {
-        cell += char;
-      }
-      continue;
-    }
-    if (char === '"') {
-      quoted = true;
-    } else if (char === ",") {
-      row.push(cell);
-      cell = "";
-    } else if (char === "\n") {
-      row.push(cell);
-      rows.push(row);
-      row = [];
-      cell = "";
-    } else if (char !== "\r") {
-      cell += char;
-    }
-  }
-  if (cell || row.length) {
-    row.push(cell);
-    rows.push(row);
-  }
-  return rows;
+function parseMebSchoolName(value: string): { province: string; district: string; name: string } | null {
+  const parts = normalizeSchoolText(value).split(" - ").map((part) => normalizeSchoolText(part)).filter(Boolean);
+  if (parts.length < 3) return null;
+  return {
+    province: toSchoolTitleCase(parts[0]),
+    district: toSchoolTitleCase(parts[1]),
+    name: parts.slice(2).join(" - ")
+  };
+}
+
+function provinceCodeForName(value: string): string {
+  const key = schoolLookupKey(value);
+  return TURKEY_PROVINCES.find((province) => schoolLookupKey(province.name) === key)?.code || "";
+}
+
+function mebProvinceCode(value: string): string {
+  const direct = mebCode(value);
+  if (direct) return direct;
+  return mebCode(provinceCodeForName(value));
+}
+
+function mebCode(value: string): string {
+  const clean = normalizeSchoolText(value);
+  if (!/^\d+$/.test(clean)) return "";
+  return String(Number(clean));
+}
+
+function toSchoolTitleCase(value: string): string {
+  return normalizeSchoolText(value)
+    .toLocaleLowerCase("tr-TR")
+    .replace(/(^|[\s'’/-])([a-zçğıöşü])/g, (match, prefix: string, letter: string) => prefix + letter.toLocaleUpperCase("tr-TR"));
 }
 
 function normalizeSchoolText(value: unknown): string {
@@ -2924,6 +3106,7 @@ function schoolLookupKey(value: unknown): string {
 }
 
 function makeSchoolId(school: SchoolRecord): string {
+  if (school.official_id) return `meb:${school.official_id}`;
   const provinceCode = school.province_code || "0";
   const districtCode = school.district_code || "0";
   const hash = stableSchoolHash([
@@ -2948,7 +3131,13 @@ function stableSchoolHash(value: string): string {
 
 async function findSchoolById(env: Env, schoolId: string): Promise<SchoolRecord | null> {
   const id = String(schoolId || "").trim();
-  if (!id || id.length > 80) return null;
+  if (!id || id.length > 120) return null;
+  if (id.startsWith("meb:")) {
+    const officialId = id.slice(4);
+    const parts = officialId.split("/");
+    const schools = await loadSchoolsForFilter(env, { province: parts[0] || "", district: parts[1] || "" });
+    return schools.find((school) => school.id === id) || null;
+  }
   const schools = await loadSchools(env);
   return schools.find((school) => school.id === id) || null;
 }
@@ -2980,6 +3169,28 @@ function publicSchoolFromRecord(school: SchoolRecord, selectedAt = ""): PublicSc
     website: school.website,
     selected_at: selectedAt
   };
+}
+
+function schoolsReferToSameSchool(left: unknown, right: unknown): boolean {
+  const leftId = schoolLikeValue(left, "id", "school_id");
+  const rightId = schoolLikeValue(right, "id", "school_id");
+  if (leftId && rightId && leftId === rightId) return true;
+  const leftKey = schoolLocationNameKey(left);
+  const rightKey = schoolLocationNameKey(right);
+  return Boolean(leftKey && rightKey && leftKey === rightKey);
+}
+
+function schoolLocationNameKey(value: unknown): string {
+  const province = schoolLookupKey(schoolLikeValue(value, "province", "school_province"));
+  const district = schoolLookupKey(schoolLikeValue(value, "district", "school_district"));
+  const name = schoolLookupKey(schoolLikeValue(value, "name", "school_name"));
+  return province && district && name ? `${province}|${district}|${name}` : "";
+}
+
+function schoolLikeValue(value: unknown, publicKey: string, rowKey: string): string {
+  if (!value || typeof value !== "object") return "";
+  const record = value as Record<string, unknown>;
+  return normalizeSchoolText(record[publicKey] ?? record[rowKey] ?? "");
 }
 
 function parsePendingSchoolChange(user: UserRow): PublicSchoolChangeRequest | null {
@@ -3032,7 +3243,7 @@ async function ensureSameSchool(env: Env, auth: AuthContext, otherId: string): P
   const other = await getDmUserById(env, otherId);
   if (other instanceof Response) return other;
   if (!other) return json({ success: false, error: "Hesap bulunamadı." }, 404);
-  if (String(other.school_id || "") !== String(auth.user.school?.id || "")) {
+  if (!schoolsReferToSameSchool(auth.user.school, other)) {
     return json({
       success: false,
       school_mismatch: true,
