@@ -42,6 +42,7 @@ const GEMINI_FALLBACK_RETRY_DELAYS_MS = [0, 900];
 const MEB_SCHOOLS_DEFAULT_API_URL = "https://www.meb.gov.tr/baglantilar/okullar/okullar_ajax.php";
 const MEB_SCHOOLS_CACHE_MS = 6 * 60 * 60 * 1000;
 const MEB_SCHOOLS_FETCH_LIMIT = 100000;
+const SCHOOL_ICON_DATA_URL_LIMIT = 220_000;
 const SCHOOL_CHANGE_PENDING = "pending";
 const SCHOOL_CHANGE_APPROVED = "approved";
 const SCHOOL_CHANGE_REJECTED = "rejected";
@@ -224,6 +225,7 @@ type UserRow = {
   school_type?: string | null;
   school_website?: string | null;
   school_selected_at?: string | null;
+  school_icon_data_url?: string | null;
   school_change_requested_json?: string | null;
   school_change_requested_at?: string | null;
   school_change_status?: string | null;
@@ -242,6 +244,7 @@ type SchoolRecord = {
   name: string;
   website: string;
   type: string;
+  icon_data_url?: string;
 };
 
 type PublicUser = {
@@ -271,6 +274,7 @@ type PublicSchool = {
   district_code: string;
   type: string;
   website: string;
+  icon_data_url: string;
   selected_at?: string;
 };
 
@@ -302,6 +306,11 @@ type SchoolSelectPayload = {
 type SchoolReviewPayload = {
   user_id?: string;
   action?: string;
+};
+
+type SchoolIconPayload = {
+  school_id?: string;
+  icon_data_url?: string;
 };
 
 type MebSchoolApiRow = {
@@ -504,6 +513,14 @@ const USER_SELECT_COLUMNS = [
   "school_change_reviewed_at"
 ].join(", ");
 
+function schoolIconSelect(alias = ""): string {
+  const prefix = alias ? `${alias}.` : "";
+  return "(SELECT si.icon_data_url FROM school_icons si WHERE " +
+    `((si.school_id = ${prefix}school_id AND ${prefix}school_id IS NOT NULL AND ${prefix}school_id <> '') OR ` +
+    `(si.school_name = ${prefix}school_name AND si.school_province = ${prefix}school_province AND si.school_district = ${prefix}school_district)) ` +
+    `ORDER BY CASE WHEN si.school_id = ${prefix}school_id THEN 0 ELSE 1 END, si.updated_at DESC LIMIT 1) AS school_icon_data_url`;
+}
+
 export default {
   async fetch(request, env, ctx): Promise<Response> {
     try {
@@ -580,6 +597,10 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
     return handleSchoolSelect(request, env);
   }
 
+  if (path === "/api/auth/school-icon/request" && request.method === "POST") {
+    return handleSchoolIconRequest(request, env);
+  }
+
   if (path === "/api/auth/presence" && request.method === "PATCH") {
     return handlePresenceUpdate(request, env);
   }
@@ -638,6 +659,10 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
 
   if (path === "/api/admin/school-requests/review" && request.method === "POST") {
     return handleAdminSchoolRequestReview(request, env);
+  }
+
+  if (path === "/api/admin/school-icons" && request.method === "POST") {
+    return handleAdminSchoolIconSave(request, env);
   }
 
   if (path === "/api/dm/users" && request.method === "GET") {
@@ -839,7 +864,7 @@ async function handleSchoolsSearch(url: URL, env: Env): Promise<Response> {
     const haystack = schoolLookupKey(`${school.name} ${school.type} ${school.website}`);
     return haystack.includes(q);
   }).slice(0, limit);
-  return json({ success: true, schools: filtered }, 200, { "cache-control": "public, max-age=3600" });
+  return json({ success: true, schools: await attachSchoolIcons(env, filtered) }, 200, { "cache-control": "public, max-age=3600" });
 }
 
 async function handleContactSubmit(request: Request, env: Env): Promise<Response> {
@@ -1100,6 +1125,34 @@ async function handleSchoolSelect(request: Request, env: Env): Promise<Response>
   });
 }
 
+async function handleSchoolIconRequest(request: Request, env: Env): Promise<Response> {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
+  const user = await getUserById(env, auth.user.id);
+  if (!user) return json({ success: false, error: "Hesap bulunamadı." }, 404);
+  const school = publicSchoolFromRow(user);
+  if (!school) return json({ success: false, error: "İkon talebi için önce okulunu seçmelisin." }, 400);
+  const binding = getEmailBinding(env);
+  if (!binding) return json({ success: false, error: "E-posta servisi şu anda hazır değil." }, 503);
+  const subject = "Okul ikonu talebi";
+  const message =
+    `${user.display_name} (${user.email}) okuluna ikon eklenmesini istedi.\n\n` +
+    `Okul: ${school.name}\nİl/İlçe: ${school.province} / ${school.district}\nOkul ID: ${school.id}\nWeb: ${school.website || "Yok"}`;
+  try {
+    await binding.send({
+      to: CONTACT_EMAIL,
+      from: { email: NO_REPLY_FROM, name: "ReylAI Okul Talebi" },
+      replyTo: { email: user.email, name: user.display_name || user.email },
+      subject: `[ReylAI] ${subject}`,
+      html: contactEmailHtml(user.display_name || user.email, user.email, subject, message),
+      text: message
+    });
+  } catch (error) {
+    return json(emailSendFailure(error, "Okul ikonu talebi gönderilemedi. Lütfen contact@reyliar.xyz adresine e-posta gönder.", "school icon request email failed"), 502);
+  }
+  return json({ success: true });
+}
+
 async function handleAdminSchoolRequests(request: Request, env: Env): Promise<Response> {
   const admin = await requireAdmin(request, env);
   if (admin instanceof Response) return admin;
@@ -1159,6 +1212,49 @@ async function handleAdminSchoolRequestReview(request: Request, env: Env): Promi
     "school_change_status = ?, school_change_reviewed_by = ?, school_change_reviewed_at = ?, updated_at = ? WHERE id = ?"
   ).bind(...bindSchoolValues(school), now, SCHOOL_CHANGE_APPROVED, admin.user.id, now, now, userId).run();
   return json({ success: true, status: SCHOOL_CHANGE_APPROVED });
+}
+
+async function handleAdminSchoolIconSave(request: Request, env: Env): Promise<Response> {
+  const admin = await requireAdmin(request, env);
+  if (admin instanceof Response) return admin;
+  const payload = await readJson<SchoolIconPayload>(request);
+  const school = await findSchoolById(env, String(payload.school_id || ""));
+  if (!school) return json({ success: false, error: "Okul bulunamadı." }, 400);
+  const iconDataUrl = String(payload.icon_data_url || "").trim();
+  const schoolKey = schoolIconKey(school);
+  const now = new Date().toISOString();
+
+  if (!iconDataUrl) {
+    await env.DB.prepare("DELETE FROM school_icons WHERE school_key = ? OR school_id = ?")
+      .bind(schoolKey, school.id).run();
+    return json({ success: true, school: publicSchoolFromRecord({ ...school, icon_data_url: "" }) });
+  }
+
+  const iconError = validateSchoolIconDataUrl(iconDataUrl);
+  if (iconError) return json({ success: false, error: iconError }, 400);
+
+  await env.DB.prepare(
+    "INSERT INTO school_icons (school_key, school_id, school_name, school_province, school_province_code, school_district, school_district_code, icon_data_url, created_at, updated_at, updated_by) " +
+    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
+    "ON CONFLICT(school_key) DO UPDATE SET school_id = excluded.school_id, school_name = excluded.school_name, " +
+    "school_province = excluded.school_province, school_province_code = excluded.school_province_code, " +
+    "school_district = excluded.school_district, school_district_code = excluded.school_district_code, " +
+    "icon_data_url = excluded.icon_data_url, updated_at = excluded.updated_at, updated_by = excluded.updated_by"
+  ).bind(
+    schoolKey,
+    school.id,
+    school.name,
+    school.province,
+    school.province_code,
+    school.district,
+    school.district_code,
+    iconDataUrl,
+    now,
+    now,
+    admin.user.id
+  ).run();
+
+  return json({ success: true, school: publicSchoolFromRecord({ ...school, icon_data_url: iconDataUrl }) });
 }
 
 async function handlePresenceUpdate(request: Request, env: Env): Promise<Response> {
@@ -1948,7 +2044,7 @@ async function handleDmUsers(request: Request, env: Env): Promise<Response> {
   const rows = await env.DB.prepare(
     "SELECT u.id, u.email, u.display_name, u.role, u.avatar_data_url, u.email_verified_at, u.created_at, " +
     "u.school_id, u.school_name, u.school_province, u.school_province_code, u.school_district, u.school_district_code, " +
-    "u.school_type, u.school_website, u.school_selected_at, u.presence_status, u.presence_updated_at, MAX(s.last_seen_at) AS last_seen_at " +
+    `u.school_type, u.school_website, u.school_selected_at, ${schoolIconSelect("u")}, u.presence_status, u.presence_updated_at, MAX(s.last_seen_at) AS last_seen_at ` +
     "FROM users u LEFT JOIN sessions s ON s.user_id = u.id AND s.expires_at > ? " +
     "WHERE u.id <> ? AND u.school_id IS NOT NULL AND u.school_name IS NOT NULL " +
     "GROUP BY u.id ORDER BY lower(u.display_name), lower(u.email) LIMIT 1000"
@@ -1979,7 +2075,7 @@ async function handleDmThreads(request: Request, env: Env): Promise<Response> {
     const other = await env.DB.prepare(
       "SELECT u.id, u.email, u.display_name, u.role, u.avatar_data_url, u.email_verified_at, u.created_at, " +
       "u.school_id, u.school_name, u.school_province, u.school_province_code, u.school_district, u.school_district_code, " +
-      "u.school_type, u.school_website, u.school_selected_at, u.presence_status, u.presence_updated_at, MAX(s.last_seen_at) AS last_seen_at " +
+      `u.school_type, u.school_website, u.school_selected_at, ${schoolIconSelect("u")}, u.presence_status, u.presence_updated_at, MAX(s.last_seen_at) AS last_seen_at ` +
       "FROM users u LEFT JOIN sessions s ON s.user_id = u.id AND s.expires_at > ? " +
       "WHERE u.id = ? GROUP BY u.id"
     ).bind(now, otherId).first<Record<string, unknown>>();
@@ -2123,7 +2219,7 @@ async function requireAuth(request: Request, env: Env): Promise<AuthContext | Re
   const tokenHash = await sha256Base64Url(token);
   const now = new Date().toISOString();
   const row = await env.DB.prepare(
-    `SELECT ${USER_SELECT_COLUMNS.split(", ").map((column) => `u.${column}`).join(", ")} ` +
+    `SELECT ${USER_SELECT_COLUMNS.split(", ").map((column) => `u.${column}`).join(", ")}, ${schoolIconSelect("u")} ` +
     "FROM sessions s JOIN users u ON u.id = s.user_id " +
     "WHERE s.token_hash = ? AND s.expires_at > ?"
   ).bind(tokenHash, now).first<UserRow>();
@@ -2207,13 +2303,13 @@ async function verifyTurnstile(request: Request, env: Env, tokenValue: unknown):
 
 async function getUserByEmail(env: Env, email: string): Promise<UserRow | null> {
   return await env.DB.prepare(
-    `SELECT ${USER_SELECT_COLUMNS} FROM users WHERE email = ?`
+    `SELECT ${USER_SELECT_COLUMNS.split(", ").map((column) => `u.${column}`).join(", ")}, ${schoolIconSelect("u")} FROM users u WHERE u.email = ?`
   ).bind(email).first<UserRow>();
 }
 
 async function getUserById(env: Env, id: string): Promise<UserRow | null> {
   return await env.DB.prepare(
-    `SELECT ${USER_SELECT_COLUMNS} FROM users WHERE id = ?`
+    `SELECT ${USER_SELECT_COLUMNS.split(", ").map((column) => `u.${column}`).join(", ")}, ${schoolIconSelect("u")} FROM users u WHERE u.id = ?`
   ).bind(id).first<UserRow>();
 }
 
@@ -2243,7 +2339,7 @@ async function getDmUserById(env: Env, id: string): Promise<Record<string, unkno
   return await env.DB.prepare(
     "SELECT u.id, u.email, u.display_name, u.role, u.avatar_data_url, u.email_verified_at, u.created_at, " +
     "u.school_id, u.school_name, u.school_province, u.school_province_code, u.school_district, u.school_district_code, " +
-    "u.school_type, u.school_website, u.school_selected_at, u.presence_status, u.presence_updated_at, MAX(s.last_seen_at) AS last_seen_at " +
+    `u.school_type, u.school_website, u.school_selected_at, ${schoolIconSelect("u")}, u.presence_status, u.presence_updated_at, MAX(s.last_seen_at) AS last_seen_at ` +
     "FROM users u LEFT JOIN sessions s ON s.user_id = u.id AND s.expires_at > ? " +
     "WHERE u.id = ? GROUP BY u.id"
   ).bind(now, id).first<Record<string, unknown>>();
@@ -2274,7 +2370,8 @@ function publicDmUser(user: Record<string, unknown>): Record<string, unknown> {
       school_district_code: String(user.school_district_code || ""),
       school_type: String(user.school_type || ""),
       school_website: String(user.school_website || ""),
-      school_selected_at: String(user.school_selected_at || "")
+      school_selected_at: String(user.school_selected_at || ""),
+      school_icon_data_url: String(user.school_icon_data_url || "")
     }),
     presence_status: presenceStatus,
     presence_updated_at: String(user.presence_updated_at || ""),
@@ -2398,6 +2495,16 @@ function validateAvatarDataUrl(value: string): string {
   if (avatar.length > AVATAR_DATA_URL_LIMIT) return "Profil fotoğrafı çok büyük. Daha küçük bir görsel seçin.";
   if (!/^data:image\/(?:png|jpeg|jpg|webp);base64,[a-z0-9+/=]+$/i.test(avatar)) {
     return "Profil fotoğrafı PNG, JPG veya WEBP olmalı.";
+  }
+  return "";
+}
+
+function validateSchoolIconDataUrl(value: string): string {
+  const icon = String(value || "").trim();
+  if (!icon) return "";
+  if (icon.length > SCHOOL_ICON_DATA_URL_LIMIT) return "Okul ikonu çok büyük. Daha küçük bir görsel seçin.";
+  if (!/^data:image\/(?:png|jpeg|jpg|webp);base64,[a-z0-9+/=]+$/i.test(icon)) {
+    return "Okul ikonu PNG, JPG veya WEBP olmalı.";
   }
   return "";
 }
@@ -3135,6 +3242,25 @@ function stableSchoolHash(value: string): string {
   return (hash >>> 0).toString(36);
 }
 
+function schoolIconKey(school: Pick<SchoolRecord, "province" | "district" | "name">): string {
+  return [school.province, school.district, school.name].map((value) => schoolLookupKey(value)).join("|");
+}
+
+async function attachSchoolIcons(env: Env, schools: SchoolRecord[]): Promise<SchoolRecord[]> {
+  if (!schools.length) return schools;
+  const keys = Array.from(new Set(schools.map(schoolIconKey).filter(Boolean))).slice(0, 500);
+  if (!keys.length) return schools;
+  const placeholders = keys.map(() => "?").join(", ");
+  const rows = await env.DB.prepare(
+    `SELECT school_key, icon_data_url FROM school_icons WHERE school_key IN (${placeholders})`
+  ).bind(...keys).all<{ school_key: string; icon_data_url: string }>();
+  const iconMap = new Map((rows.results || []).map((row) => [row.school_key, row.icon_data_url]));
+  return schools.map((school) => ({
+    ...school,
+    icon_data_url: iconMap.get(schoolIconKey(school)) || ""
+  }));
+}
+
 async function findSchoolById(env: Env, schoolId: string): Promise<SchoolRecord | null> {
   const id = String(schoolId || "").trim();
   if (!id || id.length > 120) return null;
@@ -3148,7 +3274,7 @@ async function findSchoolById(env: Env, schoolId: string): Promise<SchoolRecord 
   return schools.find((school) => school.id === id) || null;
 }
 
-function publicSchoolFromRow(user: Pick<UserRow, "school_id" | "school_name" | "school_province" | "school_province_code" | "school_district" | "school_district_code" | "school_type" | "school_website" | "school_selected_at">): PublicSchool | null {
+function publicSchoolFromRow(user: Pick<UserRow, "school_id" | "school_name" | "school_province" | "school_province_code" | "school_district" | "school_district_code" | "school_type" | "school_website" | "school_selected_at"> & { school_icon_data_url?: string | null }): PublicSchool | null {
   if (!user.school_id || !user.school_name) return null;
   return {
     id: user.school_id,
@@ -3159,6 +3285,7 @@ function publicSchoolFromRow(user: Pick<UserRow, "school_id" | "school_name" | "
     district_code: user.school_district_code || "",
     type: user.school_type || "",
     website: user.school_website || "",
+    icon_data_url: user.school_icon_data_url || "",
     selected_at: user.school_selected_at || ""
   };
 }
@@ -3173,6 +3300,7 @@ function publicSchoolFromRecord(school: SchoolRecord, selectedAt = ""): PublicSc
     district_code: school.district_code,
     type: school.type,
     website: school.website,
+    icon_data_url: school.icon_data_url || "",
     selected_at: selectedAt
   };
 }

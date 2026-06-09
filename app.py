@@ -3495,6 +3495,26 @@ body.account-menu-open .account-menu {
 .dm-presence-dot.invisible { background: #64748b; }
 .dm-presence-dot.offline { background: #64748b; }
 
+.dm-school-icon {
+  position: absolute;
+  left: -3px;
+  top: -3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border: 2px solid rgba(6,14,31,0.96);
+  overflow: hidden;
+  background: rgba(6,14,31,0.94);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.28);
+}
+
+.dm-school-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 .dm-avatar img {
   width: 100%;
   height: 100%;
@@ -6584,6 +6604,14 @@ body.chat-route-lock #libraryScreen {
   line-height: 1.5;
 }
 
+.settings-hint.error {
+  color: #fecaca;
+}
+
+.settings-hint.success {
+  color: #bfdbfe;
+}
+
 .settings-school-card {
   display: grid;
   gap: 10px;
@@ -6591,6 +6619,38 @@ body.chat-route-lock #libraryScreen {
   border: 1px solid rgba(147,197,253,0.16);
   border-radius: 18px;
   background: rgba(255,255,255,0.055);
+}
+
+.settings-school-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.settings-school-copy {
+  min-width: 0;
+}
+
+.settings-school-icon {
+  display: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 1px solid rgba(147,197,253,0.22);
+  background: rgba(6,14,31,0.45);
+  box-shadow: inset 0 1px rgba(255,255,255,0.10);
+}
+
+.settings-school-icon.visible {
+  display: block;
+}
+
+.settings-school-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .settings-school-name {
@@ -6603,6 +6663,29 @@ body.chat-route-lock #libraryScreen {
   color: var(--text-secondary);
   font-size: 12px;
   line-height: 1.55;
+}
+
+.account-menu-school {
+  margin-top: 5px;
+  min-height: 20px;
+  display: none;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  font-weight: 850;
+}
+
+.account-menu-school.visible {
+  display: flex;
+}
+
+.account-menu-school img {
+  width: 20px;
+  height: 20px;
+  border-radius: 7px;
+  object-fit: cover;
+  border: 1px solid rgba(147,197,253,0.20);
 }
 
 .school-picker-overlay {
@@ -7131,6 +7214,47 @@ body.school-required .school-picker-overlay .school-picker-cancel {
   color: var(--text-primary);
 }
 
+.admin-school-icon-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admin-school-icon-editor {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(147,197,253,0.12);
+  background: rgba(6,14,31,0.34);
+}
+
+.admin-school-icon-preview {
+  display: none;
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  object-fit: cover;
+  border: 1px solid rgba(147,197,253,0.22);
+  background: rgba(3,7,18,0.42);
+}
+
+.admin-school-icon-preview.visible {
+  display: block;
+}
+
+.admin-school-icon-copy {
+  min-width: 0;
+}
+
+.admin-school-icon-actions {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
 .admin-message-preview {
   margin-top: 6px;
   color: var(--text-primary);
@@ -7205,6 +7329,14 @@ body.school-required .school-picker-overlay .school-picker-cancel {
 
 @media (max-width: 720px) {
   .profile-settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-school-icon-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-school-icon-editor {
     grid-template-columns: 1fr;
   }
   .settings-email-control,
@@ -11069,6 +11201,7 @@ body::after,
           <div>
             <div class="account-menu-name" id="accountMenuName">Hesap</div>
             <div class="account-menu-email" id="accountMenuEmail"></div>
+            <div class="account-menu-school" id="accountMenuSchool"></div>
           </div>
         </div>
         <div class="profile-presence-popover account-menu-presence-popover" id="profilePresencePopover">
@@ -11426,9 +11559,17 @@ body::after,
         <div class="settings-field">
           <span class="settings-label">Okul</span>
           <div class="settings-school-card">
-            <div class="settings-school-name" id="settingsSchoolName">Okul seçilmedi</div>
-            <div class="settings-school-meta" id="settingsSchoolMeta">DM kullanmak için okulunu seçmelisin.</div>
-            <button class="account-menu-btn" type="button" onclick="openSchoolPicker({ mode: 'change' })">Okulu değiştir</button>
+            <div class="settings-school-row">
+              <img class="settings-school-icon" id="settingsSchoolIcon" alt="">
+              <div class="settings-school-copy">
+                <div class="settings-school-name" id="settingsSchoolName">Okul seçilmedi</div>
+                <div class="settings-school-meta" id="settingsSchoolMeta">DM kullanmak için okulunu seçmelisin.</div>
+              </div>
+            </div>
+            <div class="settings-school-actions">
+              <button class="account-menu-btn" type="button" onclick="openSchoolPicker({ mode: 'change' })">Okulu değiştir</button>
+              <button class="account-menu-btn" id="settingsSchoolIconRequestBtn" type="button" onclick="requestSchoolIcon()">Okul ikonu talep et</button>
+            </div>
           </div>
         </div>
         <button class="account-menu-btn settings-password-btn" type="button" onclick="openPasswordChangeModal()">Şifreyi değiştir</button>
@@ -11603,6 +11744,41 @@ body::after,
     <div class="admin-privacy-section" id="adminSchoolRequestsSection">
       <div class="admin-privacy-title">Okul değişikliği talepleri</div>
       <div class="admin-privacy-list" id="adminSchoolRequestsList"></div>
+    </div>
+    <div class="admin-privacy-section" id="adminSchoolIconsSection">
+      <div class="admin-privacy-title">Okul ikonları</div>
+      <div class="admin-school-icon-grid">
+        <label class="settings-field">
+          <span class="settings-label">İl</span>
+          <select class="school-select" id="adminSchoolIconProvince" onchange="handleAdminSchoolIconProvinceChange()"></select>
+        </label>
+        <label class="settings-field">
+          <span class="settings-label">İlçe</span>
+          <select class="school-select" id="adminSchoolIconDistrict" onchange="handleAdminSchoolIconDistrictChange()" disabled></select>
+        </label>
+        <label class="settings-field">
+          <span class="settings-label">Okul ara</span>
+          <input class="school-search" id="adminSchoolIconSearch" type="search" placeholder="Lise adı yaz..." oninput="debouncedLoadAdminSchoolIconSchools()">
+        </label>
+        <label class="settings-field">
+          <span class="settings-label">Okul</span>
+          <select class="school-select" id="adminSchoolIconSchool" onchange="handleAdminSchoolIconSchoolChange()" disabled></select>
+        </label>
+      </div>
+      <div class="admin-school-icon-editor">
+        <img class="admin-school-icon-preview" id="adminSchoolIconPreview" alt="">
+        <div class="admin-school-icon-copy">
+          <div class="admin-account-name" id="adminSchoolIconName">Okul seçilmedi</div>
+          <div class="admin-account-meta" id="adminSchoolIconMeta">İkon eklemek için bir okul seç.</div>
+          <input class="profile-photo-input" id="adminSchoolIconInput" type="file" accept="image/png,image/jpeg,image/webp" onchange="handleAdminSchoolIconFile(event)">
+          <div class="settings-actions admin-school-icon-actions">
+            <button class="account-menu-btn" type="button" onclick="document.getElementById('adminSchoolIconInput').click()">İkon seç</button>
+            <button class="account-menu-btn" type="button" onclick="saveAdminSchoolIcon()">Kaydet</button>
+            <button class="account-menu-btn danger" type="button" onclick="removeAdminSchoolIcon()">Kaldır</button>
+          </div>
+        </div>
+      </div>
+      <div class="settings-hint" id="adminSchoolIconStatus"></div>
     </div>
     <div class="admin-sensitive-actions">
       <button class="account-menu-btn" type="button" onclick="unlockAdminSensitive()">Kilitli detayları aç</button>
@@ -11821,6 +11997,9 @@ let _dmConversationSeq = 0;
 let _dmPanelLoadSeq = 0;
 let _dmMessagesUserId = '';
 let _dmMessageAbortController = null;
+let _adminSchoolIconSchools = [];
+let _adminSchoolIconDataUrl = '';
+let _adminSchoolIconLoadTimer = null;
 const BOOKS_REMOTE_BASE_URL = {{ books_remote_base_url|tojson }};
 
 const SEND_ICON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>';
@@ -12912,12 +13091,39 @@ function schoolMeta(school) {
   return parts.join(' / ') || 'Okul bilgisi kayıtlı.';
 }
 
+function schoolIconUrl(school) {
+  return String((school && school.icon_data_url) || '').trim();
+}
+
+function updateAccountSchoolBadge() {
+  const el = document.getElementById('accountMenuSchool');
+  if (!el) return;
+  const school = accountSchool();
+  const icon = schoolIconUrl(school);
+  if (!school || !school.name) {
+    el.classList.remove('visible');
+    el.innerHTML = '';
+    return;
+  }
+  el.classList.add('visible');
+  el.innerHTML = (icon ? '<img src="' + escHtml(icon) + '" alt="">' : '') + '<span>' + escHtml(school.name) + '</span>';
+}
+
 function updateSchoolSettingsUI() {
   const name = document.getElementById('settingsSchoolName');
   const meta = document.getElementById('settingsSchoolMeta');
+  const icon = document.getElementById('settingsSchoolIcon');
+  const requestBtn = document.getElementById('settingsSchoolIconRequestBtn');
   const school = accountSchool();
   const request = _accountUser && _accountUser.school_change_request;
   if (name) name.textContent = schoolLabel(school);
+  if (icon) {
+    const src = schoolIconUrl(school);
+    icon.classList.toggle('visible', !!src);
+    if (src) icon.src = src;
+    else icon.removeAttribute('src');
+  }
+  if (requestBtn) requestBtn.disabled = !school;
   if (meta) {
     let text = schoolMeta(school);
     if (request && request.status === 'pending' && request.school) {
@@ -12926,6 +13132,27 @@ function updateSchoolSettingsUI() {
       text = 'DM sadece aynı okulda olan kullanıcılar için açık. Devam etmek için okulunu seç.';
     }
     meta.textContent = text;
+  }
+  updateAccountSchoolBadge();
+}
+
+async function requestSchoolIcon() {
+  const school = accountSchool();
+  if (!school) {
+    showToast('warning', 'Okul seçilmedi', 'İkon talebi göndermek için önce okulunu seç.', 3600);
+    return;
+  }
+  const btn = document.getElementById('settingsSchoolIconRequestBtn');
+  if (btn) btn.disabled = true;
+  try {
+    const res = await apiFetch('/api/auth/school-icon/request', { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Talep gönderilemedi.');
+    showToast('success', 'Talep gönderildi', 'Okul ikonu talebin contact@reyliar.xyz adresine iletildi.', 4200);
+  } catch(e) {
+    showToast('error', 'Talep gönderilemedi', e.message || 'Bağlantı hatası.', 5200);
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 
@@ -13813,6 +14040,7 @@ async function loadAdminTools() {
     if (!res.ok || !data.success) throw new Error(data.error || 'Admin araçları yüklenemedi.');
     renderAdminTools(data);
     loadAdminSchoolRequests();
+    loadAdminSchoolIconProvinces();
   } catch(e) {
     renderAdminTools({ error: e.message || 'Bağlantı hatası.' });
   }
@@ -13919,6 +14147,188 @@ async function reviewSchoolRequest(userId, action) {
     loadAdminTools();
   } catch(e) {
     showToast('error', 'Talep güncellenemedi', e.message || 'Bağlantı hatası.', 5200);
+  }
+}
+
+function setAdminSchoolIconStatus(message, type) {
+  const el = document.getElementById('adminSchoolIconStatus');
+  if (!el) return;
+  el.textContent = message || '';
+  el.classList.remove('error', 'success');
+  if (type) el.classList.add(type);
+}
+
+async function loadAdminSchoolIconProvinces() {
+  const select = document.getElementById('adminSchoolIconProvince');
+  if (!select) return;
+  if (select.options && select.options.length > 1) return;
+  setSchoolSelectOptions(select, [], 'İl yükleniyor...');
+  try {
+    const res = await fetch('/api/schools/provinces', { cache: 'force-cache' });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'İller yüklenemedi.');
+    setSchoolSelectOptions(select, data.provinces || [], 'İl seç');
+  } catch(e) {
+    setAdminSchoolIconStatus(e.message || 'İller yüklenemedi.', 'error');
+  }
+}
+
+async function handleAdminSchoolIconProvinceChange() {
+  const province = String((document.getElementById('adminSchoolIconProvince') || {}).value || '');
+  const district = document.getElementById('adminSchoolIconDistrict');
+  const school = document.getElementById('adminSchoolIconSchool');
+  setSchoolSelectOptions(district, [], province ? 'İlçe yükleniyor...' : 'Önce il seç');
+  setSchoolSelectOptions(school, [], 'Önce ilçe seç');
+  if (district) district.disabled = !province;
+  if (school) school.disabled = true;
+  _adminSchoolIconSchools = [];
+  _adminSchoolIconDataUrl = '';
+  updateAdminSchoolIconPreview(null);
+  if (!province) return;
+  try {
+    const res = await fetch('/api/schools/districts?province=' + encodeURIComponent(province), { cache: 'force-cache' });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'İlçeler yüklenemedi.');
+    setSchoolSelectOptions(district, data.districts || [], 'İlçe seç');
+    setAdminSchoolIconStatus('', '');
+  } catch(e) {
+    setAdminSchoolIconStatus(e.message || 'İlçeler yüklenemedi.', 'error');
+  }
+}
+
+async function handleAdminSchoolIconDistrictChange() {
+  await loadAdminSchoolIconSchools();
+}
+
+function debouncedLoadAdminSchoolIconSchools() {
+  clearTimeout(_adminSchoolIconLoadTimer);
+  _adminSchoolIconLoadTimer = setTimeout(loadAdminSchoolIconSchools, 220);
+}
+
+async function loadAdminSchoolIconSchools() {
+  const province = String((document.getElementById('adminSchoolIconProvince') || {}).value || '');
+  const district = String((document.getElementById('adminSchoolIconDistrict') || {}).value || '');
+  const query = String((document.getElementById('adminSchoolIconSearch') || {}).value || '');
+  const select = document.getElementById('adminSchoolIconSchool');
+  setSchoolSelectOptions(select, [], district ? 'Okullar yükleniyor...' : 'Önce ilçe seç');
+  if (select) select.disabled = !district;
+  _adminSchoolIconSchools = [];
+  _adminSchoolIconDataUrl = '';
+  updateAdminSchoolIconPreview(null);
+  if (!province || !district) return;
+  try {
+    const url = '/api/schools?province=' + encodeURIComponent(province) + '&district=' + encodeURIComponent(district) + '&q=' + encodeURIComponent(query);
+    const res = await fetch(url, { cache: 'no-store' });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Okullar yüklenemedi.');
+    _adminSchoolIconSchools = data.schools || [];
+    setSchoolSelectOptions(select, _adminSchoolIconSchools, 'Okul seç', function(item) {
+      return item.name + (item.icon_data_url ? ' · ikon var' : '');
+    });
+    if (select) select.disabled = !_adminSchoolIconSchools.length;
+    setAdminSchoolIconStatus(_adminSchoolIconSchools.length ? '' : 'Bu ilçede lise bulunamadı.', _adminSchoolIconSchools.length ? '' : 'error');
+  } catch(e) {
+    setAdminSchoolIconStatus(e.message || 'Okullar yüklenemedi.', 'error');
+  }
+}
+
+function selectedAdminSchoolIconSchool() {
+  const id = String((document.getElementById('adminSchoolIconSchool') || {}).value || '');
+  return _adminSchoolIconSchools.find(function(school) { return String(school.id || '') === id; }) || null;
+}
+
+function handleAdminSchoolIconSchoolChange() {
+  const school = selectedAdminSchoolIconSchool();
+  _adminSchoolIconDataUrl = schoolIconUrl(school);
+  updateAdminSchoolIconPreview(school);
+}
+
+function updateAdminSchoolIconPreview(school) {
+  const preview = document.getElementById('adminSchoolIconPreview');
+  const name = document.getElementById('adminSchoolIconName');
+  const meta = document.getElementById('adminSchoolIconMeta');
+  const src = _adminSchoolIconDataUrl || schoolIconUrl(school);
+  if (preview) {
+    preview.classList.toggle('visible', !!src);
+    if (src) preview.src = src;
+    else preview.removeAttribute('src');
+  }
+  if (name) name.textContent = school ? schoolLabel(school) : 'Okul seçilmedi';
+  if (meta) meta.textContent = school ? schoolMeta(school) : 'İkon eklemek için bir okul seç.';
+}
+
+function handleAdminSchoolIconFile(event) {
+  const file = event && event.target && event.target.files ? event.target.files[0] : null;
+  if (!file) return;
+  if (!/^image\/(png|jpeg|webp)$/i.test(file.type || '')) {
+    setAdminSchoolIconStatus('PNG, JPG veya WebP formatında ikon seç.', 'error');
+    return;
+  }
+  if (file.size > 150000) {
+    setAdminSchoolIconStatus('İkon dosyası çok büyük. Daha küçük bir görsel seç.', 'error');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function() {
+    _adminSchoolIconDataUrl = String(reader.result || '');
+    updateAdminSchoolIconPreview(selectedAdminSchoolIconSchool());
+    setAdminSchoolIconStatus('İkon hazır. Kaydet ile yayınla.', 'success');
+  };
+  reader.onerror = function() {
+    setAdminSchoolIconStatus('İkon okunamadı.', 'error');
+  };
+  reader.readAsDataURL(file);
+}
+
+async function saveAdminSchoolIcon() {
+  const school = selectedAdminSchoolIconSchool();
+  if (!school) {
+    setAdminSchoolIconStatus('Önce okul seç.', 'error');
+    return;
+  }
+  if (!_adminSchoolIconDataUrl) {
+    setAdminSchoolIconStatus('Kaydetmek için ikon seç.', 'error');
+    return;
+  }
+  try {
+    setAdminSchoolIconStatus('İkon kaydediliyor...', '');
+    const res = await apiFetch('/api/admin/school-icons', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ school_id: school.id, icon_data_url: _adminSchoolIconDataUrl })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'İkon kaydedilemedi.');
+    Object.assign(school, data.school || {}, { icon_data_url: _adminSchoolIconDataUrl });
+    updateAdminSchoolIconPreview(school);
+    setAdminSchoolIconStatus('İkon kaydedildi.', 'success');
+    showToast('success', 'Okul ikonu kaydedildi', schoolLabel(school), 3200);
+  } catch(e) {
+    setAdminSchoolIconStatus(e.message || 'İkon kaydedilemedi.', 'error');
+  }
+}
+
+async function removeAdminSchoolIcon() {
+  const school = selectedAdminSchoolIconSchool();
+  if (!school) {
+    setAdminSchoolIconStatus('Önce okul seç.', 'error');
+    return;
+  }
+  try {
+    setAdminSchoolIconStatus('İkon kaldırılıyor...', '');
+    const res = await apiFetch('/api/admin/school-icons', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ school_id: school.id, icon_data_url: '' })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'İkon kaldırılamadı.');
+    school.icon_data_url = '';
+    _adminSchoolIconDataUrl = '';
+    updateAdminSchoolIconPreview(school);
+    setAdminSchoolIconStatus('İkon kaldırıldı.', 'success');
+  } catch(e) {
+    setAdminSchoolIconStatus(e.message || 'İkon kaldırılamadı.', 'error');
   }
 }
 
@@ -14688,6 +15098,14 @@ function dmAvatarHtml(user) {
   return escHtml(dmInitials(user));
 }
 
+function dmSchoolIconHtml(user) {
+  const school = user && user.school;
+  const src = schoolIconUrl(school);
+  if (!src) return '';
+  const title = school && school.name ? school.name : 'Okul';
+  return '<span class="dm-school-icon" title="' + escHtml(title) + '"><img src="' + escHtml(src) + '" alt=""></span>';
+}
+
 function dmUserName(user) {
   return String((user && user.display_name) || 'Hesap');
 }
@@ -14708,7 +15126,7 @@ function dmPresenceLabel(user) {
 
 function dmAvatarWithPresenceHtml(user) {
   const status = dmPresenceStatus(user);
-  return '<div class="dm-avatar-wrap"><div class="dm-avatar">' + dmAvatarHtml(user || {}) + '</div><span class="dm-presence-dot ' + escHtml(status) + '"></span></div>';
+  return '<div class="dm-avatar-wrap"><div class="dm-avatar">' + dmAvatarHtml(user || {}) + '</div>' + dmSchoolIconHtml(user || {}) + '<span class="dm-presence-dot ' + escHtml(status) + '"></span></div>';
 }
 
 function dmSnippet(message) {
