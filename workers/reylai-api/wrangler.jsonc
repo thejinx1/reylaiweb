@@ -16,6 +16,7 @@
     "BOOKS_REMOTE_BASE_URL": "https://thejinx1.github.io/blupblupreylai-books/",
     "GEMINI_API_URL": "https://generativelanguage.googleapis.com/v1beta/models",
     "GEMINI_MODEL": "gemini-3.5-flash",
+    "GEMINI_FALLBACK_MODELS": "gemini-flash-latest,gemini-2.5-flash",
     "TURNSTILE_SITE_KEY": "0x4AAAAAADf7TXMs0rMZvUad",
     "AUTH_REQUIRE_TURNSTILE": "true"
   },

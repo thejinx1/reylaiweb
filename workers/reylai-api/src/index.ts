@@ -35,6 +35,10 @@ const DM_ATTACHMENT_DATA_URL_LIMIT = 900_000;
 const DM_ATTACHMENT_FILE_LIMIT = 650_000;
 const NO_REPLY_FROM = "no-reply@reyliar.xyz";
 const CONTACT_EMAIL = "contact@reyliar.xyz";
+const GEMINI_DEFAULT_MODEL = "gemini-3.5-flash";
+const GEMINI_DEFAULT_FALLBACK_MODELS = "gemini-flash-latest,gemini-2.5-flash";
+const GEMINI_PRIMARY_RETRY_DELAYS_MS = [0, 700, 1800];
+const GEMINI_FALLBACK_RETRY_DELAYS_MS = [0, 900];
 
 type Book = {
   book_id?: string;
@@ -2928,10 +2932,63 @@ function geminiPayloadFromMessages(messages: GeminiMessage[]): Record<string, un
   return payload;
 }
 
+function geminiModelList(env: Env): string[] {
+  const configured = env.GEMINI_MODEL || GEMINI_DEFAULT_MODEL;
+  const fallbackRaw = env.GEMINI_FALLBACK_MODELS || GEMINI_DEFAULT_FALLBACK_MODELS;
+  const seen = new Set<string>();
+  return [configured, ...String(fallbackRaw).split(",")]
+    .map((model) => model.trim())
+    .filter((model) => {
+      if (!model || seen.has(model)) return false;
+      seen.add(model);
+      return true;
+    });
+}
+
+function geminiStatusIsRetryable(status: number): boolean {
+  return status === 500 || status === 502 || status === 503 || status === 504;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function retryDelay(baseDelay: number): number {
+  if (!baseDelay) return 0;
+  return baseDelay + Math.floor(Math.random() * 220);
+}
+
+function geminiErrorStatus(error: unknown): number {
+  const message = error instanceof Error ? error.message : String(error);
+  const match = message.match(/\((\d{3})\)/);
+  return match ? Number(match[1]) : 0;
+}
+
 async function geminiGenerateContent(
   env: Env,
   messages: GeminiMessage[],
   options: { temperature?: number; maxTokens?: number } = {}
+): Promise<unknown> {
+  let lastError: unknown = null;
+  for (const [modelIndex, model] of geminiModelList(env).entries()) {
+    const delays = modelIndex === 0 ? GEMINI_PRIMARY_RETRY_DELAYS_MS : GEMINI_FALLBACK_RETRY_DELAYS_MS;
+    for (const delay of delays) {
+      if (delay) await sleep(retryDelay(delay));
+      try {
+        return await geminiGenerateContentOnce(env, messages, { ...options, model });
+      } catch (error) {
+        lastError = error;
+        if (!geminiStatusIsRetryable(geminiErrorStatus(error))) throw error;
+      }
+    }
+  }
+  throw lastError || new Error("Gemini API yaniti alinamadi.");
+}
+
+async function geminiGenerateContentOnce(
+  env: Env,
+  messages: GeminiMessage[],
+  options: { temperature?: number; maxTokens?: number; model?: string } = {}
 ): Promise<unknown> {
   const generationConfig: Record<string, unknown> = {
     temperature: options.temperature ?? 0.2
@@ -2942,7 +2999,7 @@ async function geminiGenerateContent(
   payload.generationConfig = generationConfig;
 
   const baseUrl = (env.GEMINI_API_URL || "https://generativelanguage.googleapis.com/v1beta/models").replace(/\/+$/, "");
-  const model = env.GEMINI_MODEL || "gemini-3.5-flash";
+  const model = options.model || env.GEMINI_MODEL || GEMINI_DEFAULT_MODEL;
   const response = await fetch(`${baseUrl}/${encodeURIComponent(model)}:generateContent`, {
     method: "POST",
     headers: {
