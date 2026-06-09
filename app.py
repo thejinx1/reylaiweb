@@ -10677,6 +10677,10 @@ let _dmSending = false;
 let _dmPollTimer = null;
 let _dmKnownLatestIds = {};
 let _dmInitialPollDone = false;
+let _dmConversationSeq = 0;
+let _dmPanelLoadSeq = 0;
+let _dmMessagesUserId = '';
+let _dmMessageAbortController = null;
 const BOOKS_REMOTE_BASE_URL = {{ books_remote_base_url|tojson }};
 
 const SEND_ICON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>';
@@ -10741,6 +10745,10 @@ function resetAccountScopedState() {
   setDmSendingState(false);
   _dmKnownLatestIds = {};
   _dmInitialPollDone = false;
+  _dmConversationSeq++;
+  _dmPanelLoadSeq++;
+  _dmMessagesUserId = '';
+  cancelDmMessageLoad();
   selectedBook = null;
   stopDmPolling();
   resetPresenceAutomation();
@@ -12842,18 +12850,34 @@ function dmSnippet(message) {
 }
 
 function dmThreadForUser(userId) {
-  return _dmThreads.find(function(thread) { return thread.user && thread.user.id === userId; }) || null;
+  const targetId = String(userId || '');
+  return _dmThreads.find(function(thread) { return thread.user && String(thread.user.id || '') === targetId; }) || null;
 }
 
 function dmUserById(userId) {
+  const targetId = String(userId || '');
   const thread = dmThreadForUser(userId);
   if (thread && thread.user) return thread.user;
-  return _dmUsers.find(function(user) { return user.id === userId; }) || null;
+  return _dmUsers.find(function(user) { return String(user.id || '') === targetId; }) || null;
 }
 
 function setDmBadge(count) {
   const badge = document.getElementById('dmHeaderBadge');
   if (badge) badge.textContent = count > 0 ? String(Math.min(count, 99)) : '';
+}
+
+function cancelDmMessageLoad() {
+  if (_dmMessageAbortController) {
+    try { _dmMessageAbortController.abort(); } catch(e) {}
+    _dmMessageAbortController = null;
+  }
+}
+
+function isCurrentDmConversation(userId, seq) {
+  const expectedUserId = String(userId || '');
+  return !!expectedUserId &&
+    _dmActiveUserId === expectedUserId &&
+    (!seq || seq === _dmConversationSeq);
 }
 
 async function fetchDmThreads(options) {
@@ -12903,9 +12927,12 @@ function openDmOverlay(options) {
   }
   overlay.classList.add('active');
   if (!_dmActiveUserId) overlay.classList.remove('chat-open');
+  const panelSeq = ++_dmPanelLoadSeq;
   loadDmPanelData().then(function() {
+    if (panelSeq !== _dmPanelLoadSeq || !overlay.classList.contains('active')) return;
     if (options.user_id) openDmConversation(options.user_id);
   }).catch(function(e) {
+    if (panelSeq !== _dmPanelLoadSeq) return;
     showToast('error', 'Mesajlar açılamadı', e.message || 'Bağlantı hatası.', 5200);
   });
   setTimeout(function() {
@@ -12917,11 +12944,16 @@ function openDmOverlay(options) {
 function closeDmOverlay() {
   const overlay = document.getElementById('dmOverlay');
   if (overlay) overlay.classList.remove('active', 'chat-open');
+  _dmConversationSeq++;
+  _dmPanelLoadSeq++;
+  cancelDmMessageLoad();
 }
 
 function showDmPeople() {
   const overlay = document.getElementById('dmOverlay');
   if (overlay) overlay.classList.remove('chat-open');
+  _dmConversationSeq++;
+  cancelDmMessageLoad();
 }
 
 function renderDmThreads() {
@@ -12955,10 +12987,11 @@ function renderDmThreads() {
   filtered.forEach(function(row) {
     const thread = row.thread || {};
     const latest = thread.latest_message || null;
+    const rowUserId = String(row.user.id || '');
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'dm-thread' + (row.user.id === _dmActiveUserId ? ' active' : '');
-    btn.onclick = function() { openDmConversation(row.user.id); };
+    btn.className = 'dm-thread' + (rowUserId === _dmActiveUserId ? ' active' : '');
+    btn.onclick = function() { openDmConversation(rowUserId); };
     btn.innerHTML =
       dmAvatarWithPresenceHtml(row.user) +
       '<div style="min-width:0">' +
@@ -12973,7 +13006,12 @@ function renderDmThreads() {
 }
 
 async function openDmConversation(userId) {
-  _dmActiveUserId = userId;
+  const targetUserId = String(userId || '');
+  if (!targetUserId) return;
+  const conversationSeq = ++_dmConversationSeq;
+  _dmActiveUserId = targetUserId;
+  _dmMessages = [];
+  _dmMessagesUserId = targetUserId;
   const overlay = document.getElementById('dmOverlay');
   if (overlay) overlay.classList.add('chat-open');
   const chat = document.querySelector('.dm-chat');
@@ -12984,11 +13022,14 @@ async function openDmConversation(userId) {
     setTimeout(function(){ chat.classList.remove('switching'); }, 340);
   }
   renderDmThreads();
-  const user = dmUserById(userId);
+  const user = dmUserById(targetUserId);
   renderDmHeader(user);
-  await loadDmMessages(userId);
+  await loadDmMessages(targetUserId, { seq: conversationSeq });
+  if (!isCurrentDmConversation(targetUserId, conversationSeq)) return;
   const input = document.getElementById('dmTextInput');
-  if (input) setTimeout(function(){ input.focus(); }, 80);
+  if (input) setTimeout(function(){
+    if (isCurrentDmConversation(targetUserId, conversationSeq)) input.focus();
+  }, 80);
 }
 
 function renderDmHeader(user) {
@@ -13002,24 +13043,42 @@ function renderDmHeader(user) {
     '</div>';
 }
 
-async function loadDmMessages(userId) {
+async function loadDmMessages(userId, options) {
+  options = options || {};
+  const targetUserId = String(userId || '');
+  if (!targetUserId) return false;
+  const seq = options.seq || ++_dmConversationSeq;
+  if (!isCurrentDmConversation(targetUserId, seq)) return false;
+  cancelDmMessageLoad();
+  const controller = new AbortController();
+  _dmMessageAbortController = controller;
   const list = document.getElementById('dmMessageList');
-  if (list) list.innerHTML = '<div class="dm-empty-state">Mesajlar yükleniyor...</div>';
+  if (list && !options.silent) list.innerHTML = '<div class="dm-empty-state">Mesajlar yükleniyor...</div>';
   try {
-    const res = await apiFetch('/api/dm/messages?user_id=' + encodeURIComponent(userId), { cache: 'no-store' });
+    const res = await apiFetch('/api/dm/messages?user_id=' + encodeURIComponent(targetUserId), { cache: 'no-store', signal: controller.signal });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || 'Mesajlar yüklenemedi.');
+    if (!isCurrentDmConversation(targetUserId, seq) || controller.signal.aborted) return false;
     _dmMessages = Array.isArray(data.messages) ? data.messages : [];
-    renderDmMessages();
+    _dmMessagesUserId = targetUserId;
+    renderDmMessages(targetUserId);
     await fetchDmThreads();
-    renderDmThreads();
+    if (isCurrentDmConversation(targetUserId, seq)) renderDmThreads();
+    return true;
   } catch(e) {
+    if (e && e.name === 'AbortError') return false;
+    if (!isCurrentDmConversation(targetUserId, seq)) return false;
     if (list) list.innerHTML = '<div class="dm-empty-state">Mesajlar yüklenemedi.</div>';
     showToast('error', 'Mesajlar yüklenemedi', e.message || 'Bağlantı hatası.', 5200);
+    return false;
+  } finally {
+    if (_dmMessageAbortController === controller) _dmMessageAbortController = null;
   }
 }
 
-function renderDmMessages() {
+function renderDmMessages(userId) {
+  const expectedUserId = String(userId || _dmMessagesUserId || _dmActiveUserId || '');
+  if (expectedUserId && _dmActiveUserId && expectedUserId !== _dmActiveUserId) return;
   const list = document.getElementById('dmMessageList');
   if (!list) return;
   list.innerHTML = '';
@@ -13161,7 +13220,8 @@ function setDmSendingState(sending) {
 
 async function sendDmMessage() {
   if (_dmSending) return;
-  if (!_dmActiveUserId) {
+  const recipientId = String(_dmActiveUserId || '');
+  if (!recipientId) {
     showToast('warning', 'Kişi seç', 'Mesaj göndermek için önce bir hesap seç.', 3200);
     return;
   }
@@ -13172,7 +13232,7 @@ async function sendDmMessage() {
     return;
   }
   const payload = {
-    recipient_id: _dmActiveUserId,
+    recipient_id: recipientId,
     body: body,
     attachment: _dmPendingAttachment,
     forward: _dmPendingForward,
@@ -13192,9 +13252,10 @@ async function sendDmMessage() {
       autoResizeDmInput();
     }
     clearDmPending();
-    if (data.message) {
+    if (data.message && _dmActiveUserId === recipientId) {
       _dmMessages.push(data.message);
-      renderDmMessages();
+      _dmMessagesUserId = recipientId;
+      renderDmMessages(recipientId);
     }
     fetchDmThreads().then(renderDmThreads).catch(function() {});
   } catch(e) {
