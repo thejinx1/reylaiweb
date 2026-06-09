@@ -200,6 +200,88 @@ type DmMessageRow = {
   deleted_at?: string | null;
 };
 
+type AdminDmUserSummary = {
+  id: string;
+  email: string;
+  display_name: string;
+};
+
+type AdminDmMessageSummary = {
+  id: string;
+  direction: "outgoing" | "incoming";
+  sender: AdminDmUserSummary;
+  recipient: AdminDmUserSummary;
+  body: string;
+  kind: string;
+  attachment: { name: string; mime_type: string; size: number; stored: boolean } | null;
+  forward: { text: string; source_role: string; book_title: string; created_at: string } | null;
+  created_at: string;
+  read_at: string;
+  unread_for_user: boolean;
+};
+
+type AdminDmThreadSummary = {
+  other_user: AdminDmUserSummary;
+  message_count: number;
+  sent_count: number;
+  received_count: number;
+  unread_received_count: number;
+  attachment_count: number;
+  forward_count: number;
+  last_message_at: string;
+  messages: AdminDmMessageSummary[];
+};
+
+type AdminDmBucket = {
+  message_count: number;
+  sent_count: number;
+  received_count: number;
+  unread_received_count: number;
+  attachment_count: number;
+  forward_count: number;
+  last_message_at: string;
+  recent_messages: AdminDmMessageSummary[];
+  threadMap: Map<string, AdminDmThreadSummary>;
+};
+
+type AdminChatMessageSummary = {
+  role: string;
+  text: string;
+  created_at: string;
+};
+
+type AdminChatSummary = {
+  id: string;
+  title: string;
+  book_title: string;
+  book_grade: string;
+  created_at: string;
+  updated_at: string;
+  message_count: number;
+  text_chars: number;
+  messages: AdminChatMessageSummary[];
+};
+
+type AdminChatPrivacySummary = {
+  chat_count: number;
+  message_count: number;
+  text_chars: number;
+  updated_at: string;
+  recent_chats: AdminChatSummary[];
+};
+
+type AdminDmPrivacySummary = {
+  message_count: number;
+  sent_count: number;
+  received_count: number;
+  unread_received_count: number;
+  attachment_count: number;
+  forward_count: number;
+  last_message_at: string;
+  recent_messages: AdminDmMessageSummary[];
+  threads: AdminDmThreadSummary[];
+};
+
 const USER_SELECT_COLUMNS = [
   "id",
   "email",
@@ -1085,11 +1167,25 @@ async function handleAdminAccountsSensitive(request: Request, env: Env): Promise
 
   const usersResult = await env.DB.prepare(
     "SELECT id, email, display_name, role, password_hash, password_updated_at, created_at, updated_at, " +
-    "last_login_ip, last_login_at, email_verified_at FROM users ORDER BY created_at DESC LIMIT 200"
+    "last_login_ip, last_login_at, email_verified_at, avatar_data_url, pending_email, pending_email_expires_at, " +
+    "pending_email_sent_at, presence_status, presence_updated_at FROM users ORDER BY created_at DESC LIMIT 200"
   ).all<UserRow>();
   const sessionsResult = await env.DB.prepare(
     "SELECT id, user_id, created_at, expires_at, last_seen_at, user_agent, ip_address " +
     "FROM sessions ORDER BY last_seen_at DESC LIMIT 600"
+  ).all<Record<string, unknown>>();
+  const chatHistoryResult = await env.DB.prepare(
+    "SELECT user_id, store_json, updated_at FROM chat_history ORDER BY updated_at DESC LIMIT 300"
+  ).all<Record<string, unknown>>();
+  const dmResult = await env.DB.prepare(
+    "SELECT m.id, m.sender_id, m.recipient_id, m.body, m.kind, " +
+    "CASE WHEN m.attachment_data_url IS NOT NULL AND length(m.attachment_data_url) > 0 THEN 1 ELSE 0 END AS has_attachment, " +
+    "m.attachment_name, m.attachment_mime_type, m.attachment_size, m.voice_duration_ms, m.forward_json, m.created_at, m.read_at, " +
+    "su.email AS sender_email, su.display_name AS sender_name, ru.email AS recipient_email, ru.display_name AS recipient_name " +
+    "FROM dm_messages m " +
+    "LEFT JOIN users su ON su.id = m.sender_id " +
+    "LEFT JOIN users ru ON ru.id = m.recipient_id " +
+    "WHERE m.deleted_at IS NULL ORDER BY m.created_at DESC LIMIT 1200"
   ).all<Record<string, unknown>>();
 
   const sessionsByUser = new Map<string, Array<Record<string, unknown>>>();
@@ -1109,8 +1205,12 @@ async function handleAdminAccountsSensitive(request: Request, env: Env): Promise
     sessionsByUser.set(userId, list);
   }
 
+  const chatPrivacyByUser = buildAdminChatPrivacyByUser(chatHistoryResult.results || []);
+  const dmPrivacyByUser = buildAdminDmPrivacyByUser(dmResult.results || []);
+
   const accounts = await Promise.all((usersResult.results || []).map(async (user) => {
     const passwordParts = parsePasswordHash(user.password_hash || "");
+    const avatarBytes = user.avatar_data_url ? estimateBase64Bytes(String(user.avatar_data_url).split(",").pop() || "") : 0;
     return {
       id: user.id,
       email: user.email,
@@ -1129,11 +1229,251 @@ async function handleAdminAccountsSensitive(request: Request, env: Env): Promise
         iterations: passwordParts.iterations,
         fingerprint: user.password_hash ? (await sha256Base64Url(user.password_hash)).slice(0, 18) : ""
       },
+      profile_data: {
+        avatar_saved: Boolean(user.avatar_data_url),
+        avatar_bytes: avatarBytes,
+        presence_status: normalizePresenceStatus(user.presence_status || ""),
+        presence_updated_at: user.presence_updated_at || "",
+        pending_email: user.pending_email || "",
+        pending_email_expires_at: user.pending_email_expires_at || "",
+        pending_email_sent_at: user.pending_email_sent_at || "",
+        email_verified_at: user.email_verified_at || "",
+        created_at: user.created_at,
+        updated_at: user.updated_at
+      },
+      chat_history: chatPrivacyByUser.get(user.id) || emptyAdminChatPrivacySummary(),
+      dm: finalizeAdminDmBucket(dmPrivacyByUser.get(user.id)),
       sessions: sessionsByUser.get(user.id) || []
     };
   }));
 
   return json({ success: true, accounts });
+}
+
+function emptyAdminChatPrivacySummary(): AdminChatPrivacySummary {
+  return {
+    chat_count: 0,
+    message_count: 0,
+    text_chars: 0,
+    updated_at: "",
+    recent_chats: []
+  };
+}
+
+function buildAdminChatPrivacyByUser(rows: Array<Record<string, unknown>>): Map<string, AdminChatPrivacySummary> {
+  const byUser = new Map<string, AdminChatPrivacySummary>();
+  for (const row of rows) {
+    const userId = String(row.user_id || "");
+    if (!userId) continue;
+    try {
+      const store = normalizeServerChatStore(JSON.parse(String(row.store_json || "{}")));
+      byUser.set(userId, adminChatPrivacySummary(store, String(row.updated_at || "")));
+    } catch {
+      byUser.set(userId, emptyAdminChatPrivacySummary());
+    }
+  }
+  return byUser;
+}
+
+function adminChatPrivacySummary(store: ChatStore, updatedAt: string): AdminChatPrivacySummary {
+  let messageCount = 0;
+  let textChars = 0;
+  for (const chat of store.chats) {
+    const messages = Array.isArray(chat.messages) ? chat.messages : [];
+    messageCount += messages.length;
+    textChars += messages.reduce((sum, message) => sum + String(message.text || "").length, 0);
+  }
+  const recentChats = store.chats.slice(0, 12).map((chat) => {
+    const messages = Array.isArray(chat.messages) ? chat.messages : [];
+    return {
+      id: String(chat.id || ""),
+      title: String(chat.title || "Yeni sohbet"),
+      book_title: String(chat.book_title || "Kitap"),
+      book_grade: String(chat.book_grade || ""),
+      created_at: String(chat.created_at || ""),
+      updated_at: String(chat.updated_at || ""),
+      message_count: messages.length,
+      text_chars: messages.reduce((sum, message) => sum + String(message.text || "").length, 0),
+      messages: messages.slice(-4).map((message) => ({
+        role: String(message.role || ""),
+        text: adminTextPreview(message.text, 900),
+        created_at: String(message.created_at || "")
+      }))
+    };
+  });
+
+  return {
+    chat_count: store.chats.length,
+    message_count: messageCount,
+    text_chars: textChars,
+    updated_at: updatedAt,
+    recent_chats: recentChats
+  };
+}
+
+function emptyAdminDmBucket(): AdminDmBucket {
+  return {
+    message_count: 0,
+    sent_count: 0,
+    received_count: 0,
+    unread_received_count: 0,
+    attachment_count: 0,
+    forward_count: 0,
+    last_message_at: "",
+    recent_messages: [],
+    threadMap: new Map<string, AdminDmThreadSummary>()
+  };
+}
+
+function emptyAdminDmPrivacySummary(): AdminDmPrivacySummary {
+  return {
+    message_count: 0,
+    sent_count: 0,
+    received_count: 0,
+    unread_received_count: 0,
+    attachment_count: 0,
+    forward_count: 0,
+    last_message_at: "",
+    recent_messages: [],
+    threads: []
+  };
+}
+
+function buildAdminDmPrivacyByUser(rows: Array<Record<string, unknown>>): Map<string, AdminDmBucket> {
+  const byUser = new Map<string, AdminDmBucket>();
+  for (const row of rows) {
+    const senderId = String(row.sender_id || "");
+    const recipientId = String(row.recipient_id || "");
+    if (!senderId || !recipientId) continue;
+    addAdminDmRowToBucket(byUser, row, senderId);
+    addAdminDmRowToBucket(byUser, row, recipientId);
+  }
+  return byUser;
+}
+
+function addAdminDmRowToBucket(byUser: Map<string, AdminDmBucket>, row: Record<string, unknown>, viewerId: string): void {
+  const message = adminDmMessageSummary(row, viewerId);
+  const bucket = byUser.get(viewerId) || emptyAdminDmBucket();
+  byUser.set(viewerId, bucket);
+
+  bucket.message_count += 1;
+  if (message.direction === "outgoing") {
+    bucket.sent_count += 1;
+  } else {
+    bucket.received_count += 1;
+    if (message.unread_for_user) bucket.unread_received_count += 1;
+  }
+  if (message.attachment) bucket.attachment_count += 1;
+  if (message.forward) bucket.forward_count += 1;
+  if (!bucket.last_message_at || message.created_at > bucket.last_message_at) bucket.last_message_at = message.created_at;
+  if (bucket.recent_messages.length < 30) bucket.recent_messages.push(message);
+
+  const otherUser = message.direction === "outgoing" ? message.recipient : message.sender;
+  if (!otherUser.id) return;
+  const thread = bucket.threadMap.get(otherUser.id) || {
+    other_user: otherUser,
+    message_count: 0,
+    sent_count: 0,
+    received_count: 0,
+    unread_received_count: 0,
+    attachment_count: 0,
+    forward_count: 0,
+    last_message_at: "",
+    messages: []
+  };
+  bucket.threadMap.set(otherUser.id, thread);
+  thread.message_count += 1;
+  if (message.direction === "outgoing") {
+    thread.sent_count += 1;
+  } else {
+    thread.received_count += 1;
+    if (message.unread_for_user) thread.unread_received_count += 1;
+  }
+  if (message.attachment) thread.attachment_count += 1;
+  if (message.forward) thread.forward_count += 1;
+  if (!thread.last_message_at || message.created_at > thread.last_message_at) thread.last_message_at = message.created_at;
+  if (thread.messages.length < 5) thread.messages.push(message);
+}
+
+function finalizeAdminDmBucket(bucket?: AdminDmBucket): AdminDmPrivacySummary {
+  if (!bucket) return emptyAdminDmPrivacySummary();
+  return {
+    message_count: bucket.message_count,
+    sent_count: bucket.sent_count,
+    received_count: bucket.received_count,
+    unread_received_count: bucket.unread_received_count,
+    attachment_count: bucket.attachment_count,
+    forward_count: bucket.forward_count,
+    last_message_at: bucket.last_message_at,
+    recent_messages: bucket.recent_messages.slice(0, 30),
+    threads: Array.from(bucket.threadMap.values())
+      .sort((a, b) => String(b.last_message_at || "").localeCompare(String(a.last_message_at || "")))
+      .slice(0, 12)
+  };
+}
+
+function adminDmMessageSummary(row: Record<string, unknown>, viewerId: string): AdminDmMessageSummary {
+  const sender = adminDmUserSummary(row.sender_id, row.sender_email, row.sender_name);
+  const recipient = adminDmUserSummary(row.recipient_id, row.recipient_email, row.recipient_name);
+  const outgoing = sender.id === viewerId;
+  const hasAttachment = Number(row.has_attachment || 0) > 0;
+  const attachmentName = String(row.attachment_name || "").trim();
+  const attachmentMime = String(row.attachment_mime_type || "").trim();
+  const attachmentSize = Number(row.attachment_size || 0);
+  return {
+    id: String(row.id || ""),
+    direction: outgoing ? "outgoing" : "incoming",
+    sender,
+    recipient,
+    body: adminTextPreview(row.body, 800),
+    kind: String(row.kind || "text").slice(0, 40),
+    attachment: hasAttachment || attachmentName ? {
+      name: attachmentName || "dosya",
+      mime_type: attachmentMime || "application/octet-stream",
+      size: Number.isFinite(attachmentSize) ? attachmentSize : 0,
+      stored: hasAttachment
+    } : null,
+    forward: adminForwardSummary(row.forward_json),
+    created_at: String(row.created_at || ""),
+    read_at: String(row.read_at || ""),
+    unread_for_user: !outgoing && !String(row.read_at || "")
+  };
+}
+
+function adminDmUserSummary(id: unknown, email: unknown, displayName: unknown): AdminDmUserSummary {
+  const cleanEmail = String(email || "").trim();
+  const cleanName = String(displayName || "").replace(/\s+/g, " ").trim();
+  return {
+    id: String(id || ""),
+    email: cleanEmail,
+    display_name: (cleanName || cleanEmail.split("@")[0] || "Hesap").slice(0, 80)
+  };
+}
+
+function adminForwardSummary(value: unknown): AdminDmMessageSummary["forward"] {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(String(value));
+    if (!isRecord(parsed)) return null;
+    const text = adminTextPreview(parsed.text, 900);
+    if (!text) return null;
+    return {
+      text,
+      source_role: String(parsed.source_role || "ai").slice(0, 24),
+      book_title: String(parsed.book_title || "").slice(0, 180),
+      created_at: String(parsed.created_at || "").slice(0, 40)
+    };
+  } catch {
+    return null;
+  }
+}
+
+function adminTextPreview(value: unknown, limit = 360): string {
+  return String(value || "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .trim()
+    .slice(0, limit);
 }
 
 async function handleChatHistoryGet(env: Env, userId: string): Promise<Response> {

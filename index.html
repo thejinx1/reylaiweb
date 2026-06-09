@@ -3958,7 +3958,7 @@ body.account-menu-open .account-menu {
 }
 
 .admin-tools-panel {
-  width: min(880px, 100%);
+  width: min(1080px, 100%);
 }
 
 .profile-settings-overlay.active .profile-settings-panel,
@@ -4574,6 +4574,51 @@ body.account-menu-open .account-menu {
   font-size: 12px;
   line-height: 1.5;
   overflow-wrap: anywhere;
+}
+
+.admin-privacy-section {
+  display: grid;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.admin-privacy-title {
+  color: #bfdbfe;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.admin-privacy-list {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-data-row {
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(147,197,253,0.10);
+  background: rgba(6,14,31,0.36);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.admin-data-row strong {
+  color: var(--text-primary);
+}
+
+.admin-message-preview {
+  margin-top: 6px;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+}
+
+.admin-message-meta {
+  color: var(--text-muted);
+  font-size: 11px;
 }
 
 .admin-account-row {
@@ -8832,7 +8877,7 @@ body::after,
     <div class="admin-stats" id="adminStats"></div>
     <div class="admin-sensitive-actions">
       <button class="account-menu-btn" type="button" onclick="unlockAdminSensitive()">Kilitli detayları aç</button>
-      <div class="admin-sensitive-note">Şifreler düz metin olarak saklanmaz; güvenli hash özeti ve cihaz oturumları gösterilir.</div>
+      <div class="admin-sensitive-note">Şifreler düz metin olarak saklanmaz. Bu kilitli görünüm; profil verisi, sohbet geçmişi, DM özetleri, ek dosya bilgileri ve cihaz oturumlarını gösterir.</div>
     </div>
     <div class="admin-sensitive-list" id="adminSensitiveList"></div>
     <div class="admin-account-list" id="adminAccountsList"></div>
@@ -10524,19 +10569,118 @@ function renderAdminSensitive(accounts) {
       '<div class="admin-sensitive-title">' + escHtml(account.display_name || 'Hesap') + ' · ' + escHtml(account.email || '') + '</div>' +
       '<div class="admin-sensitive-grid">' +
         sensitiveField('Şifre', storage.note || 'Şifreler korunuyor.') +
-        sensitiveField('Hash algoritması', (storage.algorithm || 'unknown') + ' · ' + escHtml(storage.iterations || 0) + ' iterasyon') +
+        sensitiveField('Hash algoritması', (storage.algorithm || 'unknown') + ' · ' + (storage.iterations || 0) + ' iterasyon') +
         sensitiveField('Hash parmak izi', storage.fingerprint || 'Yok') +
         sensitiveField('Şifre güncelleme', account.password_updated_at ? formatAdminDate(account.password_updated_at) : 'Yok') +
         sensitiveField('Son giriş IP', account.last_login_ip || 'Bilinmiyor') +
         sensitiveField('Son giriş', account.last_login_at ? formatAdminDate(account.last_login_at) : 'Yok') +
       '</div>' +
-      '<div class="admin-session-list">' + sessionHtml + '</div>' +
+      renderAdminProfileData(account.profile_data || {}) +
+      renderAdminChatHistory(account.chat_history || {}) +
+      renderAdminDmData(account.dm || {}) +
+      '<div class="admin-privacy-section"><div class="admin-privacy-title">Cihaz oturumları</div><div class="admin-session-list">' + sessionHtml + '</div></div>' +
     '</div>';
   }).join('') || '<div class="admin-sensitive-card"><div class="admin-sensitive-title">Gizli detay yok</div></div>';
 }
 
+function renderAdminProfileData(profile) {
+  return '<div class="admin-privacy-section">' +
+    '<div class="admin-privacy-title">Profil ve hesap verisi</div>' +
+    '<div class="admin-sensitive-grid">' +
+      sensitiveField('Profil fotoğrafı', profile.avatar_saved ? ('Kayıtlı · ' + adminFormatBytes(profile.avatar_bytes || 0)) : 'Yok') +
+      sensitiveField('Durum', adminPresenceLabel(profile.presence_status) + (profile.presence_updated_at ? ' · ' + formatAdminDate(profile.presence_updated_at) : '')) +
+      sensitiveField('E-posta doğrulama', profile.email_verified_at ? formatAdminDate(profile.email_verified_at) : 'Doğrulanmadı') +
+      sensitiveField('Bekleyen e-posta', profile.pending_email ? (profile.pending_email + ' · ' + (profile.pending_email_expires_at ? formatAdminDate(profile.pending_email_expires_at) : 'süre yok')) : 'Yok') +
+      sensitiveField('Oluşturulma', profile.created_at ? formatAdminDate(profile.created_at) : 'Yok') +
+      sensitiveField('Güncelleme', profile.updated_at ? formatAdminDate(profile.updated_at) : 'Yok') +
+    '</div>' +
+  '</div>';
+}
+
+function renderAdminChatHistory(history) {
+  const chats = Array.isArray(history.recent_chats) ? history.recent_chats : [];
+  const summary = '<div class="admin-data-row"><strong>' + escHtml(history.chat_count || 0) + ' sohbet</strong> · ' +
+    escHtml(history.message_count || 0) + ' mesaj · ' + escHtml(history.text_chars || 0) + ' karakter' +
+    (history.updated_at ? '<br>Son senkron: ' + escHtml(formatAdminDate(history.updated_at)) : '') + '</div>';
+  const rows = chats.map(function(chat) {
+    const messages = Array.isArray(chat.messages) ? chat.messages : [];
+    const messagesHtml = messages.map(renderAdminChatMessage).join('');
+    return '<div class="admin-data-row">' +
+      '<strong>' + escHtml(chat.title || 'Yeni sohbet') + '</strong>' +
+      '<br>' + escHtml(chat.book_title || 'Kitap') + (chat.book_grade ? ' · ' + escHtml(chat.book_grade) + '. sınıf' : '') +
+      '<br>' + escHtml(chat.message_count || 0) + ' mesaj · ' + escHtml(chat.text_chars || 0) + ' karakter · Güncelleme: ' + escHtml(chat.updated_at ? formatAdminDate(chat.updated_at) : 'Yok') +
+      messagesHtml +
+    '</div>';
+  }).join('') || '<div class="admin-data-row">Bu hesapta kayıtlı sohbet geçmişi yok.</div>';
+  return '<div class="admin-privacy-section"><div class="admin-privacy-title">Sohbet geçmişi</div><div class="admin-privacy-list">' + summary + rows + '</div></div>';
+}
+
+function renderAdminChatMessage(message) {
+  const role = message.role === 'user' ? 'Kullanıcı' : 'AI';
+  return '<div class="admin-message-meta">' + escHtml(role) + (message.created_at ? ' · ' + escHtml(formatAdminDate(message.created_at)) : '') + '</div>' +
+    '<div class="admin-message-preview">' + escHtml(adminPreviewText(message.text, 900) || '(boş mesaj)') + '</div>';
+}
+
+function renderAdminDmData(dm) {
+  const threads = Array.isArray(dm.threads) ? dm.threads : [];
+  const summary = '<div class="admin-data-row"><strong>' + escHtml(dm.message_count || 0) + ' DM mesajı</strong> · ' +
+    escHtml(dm.sent_count || 0) + ' giden · ' + escHtml(dm.received_count || 0) + ' gelen · ' +
+    escHtml(dm.unread_received_count || 0) + ' okunmamış · ' + escHtml(dm.attachment_count || 0) + ' ek · ' +
+    escHtml(dm.forward_count || 0) + ' iletilen AI mesajı' +
+    (dm.last_message_at ? '<br>Son DM: ' + escHtml(formatAdminDate(dm.last_message_at)) : '') + '</div>';
+  const rows = threads.map(function(thread) {
+    const other = thread.other_user || {};
+    const messages = Array.isArray(thread.messages) ? thread.messages : [];
+    return '<div class="admin-data-row">' +
+      '<strong>' + escHtml(other.display_name || 'Hesap') + '</strong>' + (other.email ? ' · ' + escHtml(other.email) : '') +
+      '<br>' + escHtml(thread.message_count || 0) + ' mesaj · ' + escHtml(thread.sent_count || 0) + ' giden · ' + escHtml(thread.received_count || 0) + ' gelen · ' +
+      escHtml(thread.unread_received_count || 0) + ' okunmamış · ' + escHtml(thread.attachment_count || 0) + ' ek · ' + escHtml(thread.forward_count || 0) + ' iletme' +
+      (thread.last_message_at ? '<br>Son mesaj: ' + escHtml(formatAdminDate(thread.last_message_at)) : '') +
+      messages.map(renderAdminDmMessage).join('') +
+    '</div>';
+  }).join('') || '<div class="admin-data-row">Bu hesapta kayıtlı DM yok.</div>';
+  return '<div class="admin-privacy-section"><div class="admin-privacy-title">DM geçmişi</div><div class="admin-privacy-list">' + summary + rows + '</div></div>';
+}
+
+function renderAdminDmMessage(message) {
+  const direction = message.direction === 'outgoing' ? 'Giden' : 'Gelen';
+  const sender = message.sender || {};
+  const recipient = message.recipient || {};
+  let extras = '';
+  if (message.attachment) {
+    extras += '<div class="admin-message-meta">Ek: ' + escHtml(message.attachment.name || 'dosya') + ' · ' + escHtml(message.attachment.mime_type || '') + ' · ' + escHtml(adminFormatBytes(message.attachment.size || 0)) + '</div>';
+  }
+  if (message.forward) {
+    extras += '<div class="admin-message-meta">İletilen AI mesajı' + (message.forward.book_title ? ' · ' + escHtml(message.forward.book_title) : '') + '</div>' +
+      '<div class="admin-message-preview">' + escHtml(adminPreviewText(message.forward.text, 900) || '(boş iletme)') + '</div>';
+  }
+  return '<div class="admin-message-meta">' + escHtml(direction) + ' · ' + escHtml(sender.display_name || 'Gönderen') + ' → ' + escHtml(recipient.display_name || 'Alıcı') +
+    (message.created_at ? ' · ' + escHtml(formatAdminDate(message.created_at)) : '') +
+    (message.unread_for_user ? ' · okunmamış' : '') + '</div>' +
+    (message.body ? '<div class="admin-message-preview">' + escHtml(adminPreviewText(message.body, 900)) + '</div>' : '') +
+    extras;
+}
+
 function sensitiveField(label, value) {
   return '<div class="admin-sensitive-field"><div class="admin-sensitive-label">' + escHtml(label) + '</div><div class="admin-sensitive-value">' + escHtml(value) + '</div></div>';
+}
+
+function adminPresenceLabel(status) {
+  const labels = { online: 'Çevrimiçi', idle: 'Boşta', dnd: 'Rahatsız etmeyin', invisible: 'Görünmez' };
+  return labels[String(status || '').toLowerCase()] || 'Bilinmiyor';
+}
+
+function adminPreviewText(value, limit) {
+  const text = String(value || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+  const max = Math.max(40, Number(limit || 360) || 360);
+  return text.length > max ? text.slice(0, max - 3) + '...' : text;
+}
+
+function adminFormatBytes(value) {
+  const size = Math.max(0, Number(value || 0) || 0);
+  if (size >= 1024 * 1024) return (size / (1024 * 1024)).toFixed(1) + ' MB';
+  if (size >= 1024) return (size / 1024).toFixed(1) + ' KB';
+  return size + ' B';
 }
 
 function describeDevice(userAgent) {
