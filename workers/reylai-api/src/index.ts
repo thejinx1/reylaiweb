@@ -39,6 +39,10 @@ const GEMINI_DEFAULT_MODEL = "gemini-3.5-flash";
 const GEMINI_DEFAULT_FALLBACK_MODELS = "gemini-flash-latest,gemini-2.5-flash";
 const GEMINI_PRIMARY_RETRY_DELAYS_MS = [0, 700, 1800];
 const GEMINI_FALLBACK_RETRY_DELAYS_MS = [0, 900];
+const MEB_SCHOOLS_DEFAULT_CSV_URL = "https://raw.githubusercontent.com/ensarkovankaya/meb-okullar/master/meb-okullar.csv";
+const SCHOOL_CHANGE_PENDING = "pending";
+const SCHOOL_CHANGE_APPROVED = "approved";
+const SCHOOL_CHANGE_REJECTED = "rejected";
 
 type Book = {
   book_id?: string;
@@ -125,6 +129,32 @@ type UserRow = {
   password_change_token_expires_at?: string | null;
   presence_status?: string | null;
   presence_updated_at?: string | null;
+  school_id?: string | null;
+  school_name?: string | null;
+  school_province?: string | null;
+  school_province_code?: string | null;
+  school_district?: string | null;
+  school_district_code?: string | null;
+  school_type?: string | null;
+  school_website?: string | null;
+  school_selected_at?: string | null;
+  school_change_requested_json?: string | null;
+  school_change_requested_at?: string | null;
+  school_change_status?: string | null;
+  school_change_reviewed_by?: string | null;
+  school_change_reviewed_at?: string | null;
+};
+
+type SchoolRecord = {
+  id: string;
+  country: string;
+  province: string;
+  province_code: string;
+  district: string;
+  district_code: string;
+  name: string;
+  website: string;
+  type: string;
 };
 
 type PublicUser = {
@@ -140,6 +170,28 @@ type PublicUser = {
   avatar_data_url: string;
   presence_status: string;
   presence_updated_at: string;
+  school: PublicSchool | null;
+  school_change_request: PublicSchoolChangeRequest | null;
+  school_required: boolean;
+};
+
+type PublicSchool = {
+  id: string;
+  name: string;
+  province: string;
+  province_code: string;
+  district: string;
+  district_code: string;
+  type: string;
+  website: string;
+  selected_at?: string;
+};
+
+type PublicSchoolChangeRequest = {
+  status: string;
+  requested_at: string;
+  reviewed_at: string;
+  school: PublicSchool | null;
 };
 
 type AuthPayload = {
@@ -155,6 +207,18 @@ type ProfilePayload = {
   email?: string;
   avatar_data_url?: string;
 };
+
+type SchoolSelectPayload = {
+  school_id?: string;
+};
+
+type SchoolReviewPayload = {
+  user_id?: string;
+  action?: string;
+};
+
+let schoolsCache: { url: string; loadedAt: number; schools: SchoolRecord[] } | null = null;
+let schoolsLoadPromise: Promise<SchoolRecord[]> | null = null;
 
 type VerificationPayload = {
   code?: string;
@@ -322,7 +386,21 @@ const USER_SELECT_COLUMNS = [
   "password_change_token_hash",
   "password_change_token_expires_at",
   "presence_status",
-  "presence_updated_at"
+  "presence_updated_at",
+  "school_id",
+  "school_name",
+  "school_province",
+  "school_province_code",
+  "school_district",
+  "school_district_code",
+  "school_type",
+  "school_website",
+  "school_selected_at",
+  "school_change_requested_json",
+  "school_change_requested_at",
+  "school_change_status",
+  "school_change_reviewed_by",
+  "school_change_reviewed_at"
 ].join(", ");
 
 export default {
@@ -363,6 +441,18 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
     return handleAuthConfig(env);
   }
 
+  if (path === "/api/schools/provinces" && request.method === "GET") {
+    return handleSchoolProvinces(env);
+  }
+
+  if (path === "/api/schools/districts" && request.method === "GET") {
+    return handleSchoolDistricts(url, env);
+  }
+
+  if (path === "/api/schools" && request.method === "GET") {
+    return handleSchoolsSearch(url, env);
+  }
+
   if (path === "/api/auth/signup" && request.method === "POST") {
     return handleSignup(request, env);
   }
@@ -383,6 +473,10 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
 
   if (path === "/api/auth/profile" && request.method === "PATCH") {
     return handleProfileUpdate(request, env);
+  }
+
+  if (path === "/api/auth/school" && request.method === "POST") {
+    return handleSchoolSelect(request, env);
   }
 
   if (path === "/api/auth/presence" && request.method === "PATCH") {
@@ -435,6 +529,14 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
 
   if (path === "/api/admin/accounts/sensitive" && request.method === "POST") {
     return handleAdminAccountsSensitive(request, env);
+  }
+
+  if (path === "/api/admin/school-requests" && request.method === "GET") {
+    return handleAdminSchoolRequests(request, env);
+  }
+
+  if (path === "/api/admin/school-requests/review" && request.method === "POST") {
+    return handleAdminSchoolRequestReview(request, env);
   }
 
   if (path === "/api/dm/users" && request.method === "GET") {
@@ -590,6 +692,58 @@ function handleAuthConfig(env: Env): Response {
     turnstile_required: turnstileRequired,
     turnstile_configured: Boolean(siteKey && secretConfigured)
   });
+}
+
+async function handleSchoolProvinces(env: Env): Promise<Response> {
+  const schools = await loadSchools(env);
+  const map = new Map<string, { name: string; code: string; count: number }>();
+  for (const school of schools) {
+    const key = school.province.toLocaleLowerCase("tr-TR");
+    const existing = map.get(key) || { name: school.province, code: school.province_code, count: 0 };
+    existing.count += 1;
+    map.set(key, existing);
+  }
+  return json({
+    success: true,
+    provinces: Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, "tr-TR"))
+  }, 200, { "cache-control": "public, max-age=86400" });
+}
+
+async function handleSchoolDistricts(url: URL, env: Env): Promise<Response> {
+  const province = normalizeSchoolText(url.searchParams.get("province") || "");
+  if (!province) return json({ success: false, error: "İl seçilmedi." }, 400);
+  const schools = await loadSchools(env);
+  const provinceKey = schoolLookupKey(province);
+  const map = new Map<string, { name: string; code: string; count: number }>();
+  for (const school of schools) {
+    if (schoolLookupKey(school.province) !== provinceKey) continue;
+    const key = schoolLookupKey(school.district);
+    const existing = map.get(key) || { name: school.district, code: school.district_code, count: 0 };
+    existing.count += 1;
+    map.set(key, existing);
+  }
+  return json({
+    success: true,
+    districts: Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, "tr-TR"))
+  }, 200, { "cache-control": "public, max-age=86400" });
+}
+
+async function handleSchoolsSearch(url: URL, env: Env): Promise<Response> {
+  const province = normalizeSchoolText(url.searchParams.get("province") || "");
+  const district = normalizeSchoolText(url.searchParams.get("district") || "");
+  const q = schoolLookupKey(url.searchParams.get("q") || "");
+  const limit = Math.max(1, Math.min(Number(url.searchParams.get("limit") || 250) || 250, 500));
+  const provinceKey = schoolLookupKey(province);
+  const districtKey = schoolLookupKey(district);
+  const schools = await loadSchools(env);
+  const filtered = schools.filter((school) => {
+    if (provinceKey && schoolLookupKey(school.province) !== provinceKey) return false;
+    if (districtKey && schoolLookupKey(school.district) !== districtKey) return false;
+    if (!q) return true;
+    const haystack = schoolLookupKey(`${school.name} ${school.type} ${school.website}`);
+    return haystack.includes(q);
+  }).slice(0, limit);
+  return json({ success: true, schools: filtered }, 200, { "cache-control": "public, max-age=3600" });
 }
 
 async function handleContactSubmit(request: Request, env: Env): Promise<Response> {
@@ -810,6 +964,105 @@ async function handleProfileUpdate(request: Request, env: Env): Promise<Response
   const user = await getUserById(env, authCtx.user.id);
   if (user !== null) return json({ success: true, user: publicUser(user as UserRow) });
   return json({ success: true, user: { ...authCtx.user, display_name: displayName } });
+}
+
+async function handleSchoolSelect(request: Request, env: Env): Promise<Response> {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
+  const payload = await readJson<SchoolSelectPayload>(request);
+  const school = await findSchoolById(env, String(payload.school_id || ""));
+  if (!school) return json({ success: false, error: "Okul bulunamadı. İl, ilçe ve okul seçimini kontrol et." }, 400);
+  const user = await getUserById(env, auth.user.id);
+  if (!user) return json({ success: false, error: "Hesap bulunamadı." }, 404);
+  const now = new Date().toISOString();
+
+  if (!user.school_id) {
+    await env.DB.prepare(
+      "UPDATE users SET school_id = ?, school_name = ?, school_province = ?, school_province_code = ?, " +
+      "school_district = ?, school_district_code = ?, school_type = ?, school_website = ?, school_selected_at = ?, " +
+      "school_change_requested_json = NULL, school_change_requested_at = NULL, school_change_status = NULL, " +
+      "school_change_reviewed_by = NULL, school_change_reviewed_at = NULL, updated_at = ? WHERE id = ?"
+    ).bind(...bindSchoolValues(school), now, now, user.id).run();
+    const freshUser = await getUserById(env, user.id);
+    return json({ success: true, pending_review: false, user: freshUser ? publicUser(freshUser) : auth.user });
+  }
+
+  if (user.school_id === school.id) {
+    return json({ success: true, pending_review: false, user: publicUser(user) });
+  }
+
+  await env.DB.prepare(
+    "UPDATE users SET school_change_requested_json = ?, school_change_requested_at = ?, school_change_status = ?, " +
+    "school_change_reviewed_by = NULL, school_change_reviewed_at = NULL, updated_at = ? WHERE id = ?"
+  ).bind(JSON.stringify(school), now, SCHOOL_CHANGE_PENDING, now, user.id).run();
+  const freshUser = await getUserById(env, user.id);
+  return json({
+    success: true,
+    pending_review: true,
+    user: freshUser ? publicUser(freshUser) : auth.user,
+    message: "Okul değişikliği yönetici onayına gönderildi."
+  });
+}
+
+async function handleAdminSchoolRequests(request: Request, env: Env): Promise<Response> {
+  const admin = await requireAdmin(request, env);
+  if (admin instanceof Response) return admin;
+  const rows = await env.DB.prepare(
+    "SELECT id, email, display_name, school_id, school_name, school_province, school_province_code, " +
+    "school_district, school_district_code, school_type, school_website, school_selected_at, " +
+    "school_change_requested_json, school_change_requested_at, school_change_status " +
+    "FROM users WHERE school_change_status = ? AND school_change_requested_json IS NOT NULL " +
+    "ORDER BY school_change_requested_at ASC LIMIT 200"
+  ).bind(SCHOOL_CHANGE_PENDING).all<UserRow>();
+  const requests = (rows.results || []).map((user) => ({
+    user_id: user.id,
+    email: user.email,
+    display_name: user.display_name,
+    current_school: publicSchoolFromRow(user),
+    requested_school: parsePendingSchoolChange(user)?.school || null,
+    requested_at: user.school_change_requested_at || "",
+    status: user.school_change_status || ""
+  }));
+  return json({ success: true, requests });
+}
+
+async function handleAdminSchoolRequestReview(request: Request, env: Env): Promise<Response> {
+  const admin = await requireAdmin(request, env);
+  if (admin instanceof Response) return admin;
+  const payload = await readJson<SchoolReviewPayload>(request);
+  const userId = String(payload.user_id || "").trim();
+  const action = String(payload.action || "").trim().toLowerCase();
+  if (!userId) return json({ success: false, error: "Kullanıcı seçilmedi." }, 400);
+  if (action !== "approve" && action !== "reject") {
+    return json({ success: false, error: "Geçerli bir onay işlemi seçilmedi." }, 400);
+  }
+  const user = await getUserById(env, userId);
+  if (!user || user.school_change_status !== SCHOOL_CHANGE_PENDING || !user.school_change_requested_json) {
+    return json({ success: false, error: "Bekleyen okul değişikliği bulunamadı." }, 404);
+  }
+  const now = new Date().toISOString();
+  if (action === "reject") {
+    await env.DB.prepare(
+      "UPDATE users SET school_change_status = ?, school_change_reviewed_by = ?, school_change_reviewed_at = ?, updated_at = ? WHERE id = ?"
+    ).bind(SCHOOL_CHANGE_REJECTED, admin.user.id, now, now, userId).run();
+    return json({ success: true, status: SCHOOL_CHANGE_REJECTED });
+  }
+
+  let school: SchoolRecord | null = null;
+  try {
+    school = JSON.parse(user.school_change_requested_json) as SchoolRecord;
+  } catch {
+    school = null;
+  }
+  if (!school || !school.id) {
+    return json({ success: false, error: "Talepteki okul verisi okunamadı." }, 400);
+  }
+  await env.DB.prepare(
+    "UPDATE users SET school_id = ?, school_name = ?, school_province = ?, school_province_code = ?, " +
+    "school_district = ?, school_district_code = ?, school_type = ?, school_website = ?, school_selected_at = ?, " +
+    "school_change_status = ?, school_change_reviewed_by = ?, school_change_reviewed_at = ?, updated_at = ? WHERE id = ?"
+  ).bind(...bindSchoolValues(school), now, SCHOOL_CHANGE_APPROVED, admin.user.id, now, now, userId).run();
+  return json({ success: true, status: SCHOOL_CHANGE_APPROVED });
 }
 
 async function handlePresenceUpdate(request: Request, env: Env): Promise<Response> {
@@ -1175,7 +1428,8 @@ async function handleAdminAccounts(request: Request, env: Env): Promise<Response
 
   const rows = await env.DB.prepare(
     "SELECT u.id, u.email, u.display_name, u.role, u.avatar_data_url, u.email_verified_at, u.created_at, u.updated_at, " +
-    "u.last_login_ip, u.last_login_at, u.password_updated_at, " +
+    "u.last_login_ip, u.last_login_at, u.password_updated_at, u.school_id, u.school_name, u.school_province, u.school_district, " +
+    "u.school_change_requested_json, u.school_change_requested_at, u.school_change_status, " +
     "COUNT(s.id) AS session_count, MAX(s.last_seen_at) AS last_seen_at, MAX(s.ip_address) AS session_ip " +
     "FROM users u LEFT JOIN sessions s ON s.user_id = u.id AND s.expires_at > ? " +
     "GROUP BY u.id ORDER BY u.created_at DESC LIMIT 200"
@@ -1195,6 +1449,18 @@ async function handleAdminAccounts(request: Request, env: Env): Promise<Response
     last_login_ip: String(row.last_login_ip || ""),
     last_login_at: String(row.last_login_at || ""),
     password_updated_at: String(row.password_updated_at || ""),
+    school: publicSchoolFromRow({
+      school_id: String(row.school_id || ""),
+      school_name: String(row.school_name || ""),
+      school_province: String(row.school_province || ""),
+      school_province_code: "",
+      school_district: String(row.school_district || ""),
+      school_district_code: "",
+      school_type: "",
+      school_website: "",
+      school_selected_at: ""
+    }),
+    school_change_pending: String(row.school_change_status || "") === SCHOOL_CHANGE_PENDING,
     session_count: Number(row.session_count || 0),
     last_seen_at: String(row.last_seen_at || ""),
     session_ip: String(row.session_ip || "")
@@ -1225,7 +1491,10 @@ async function handleAdminAccountsSensitive(request: Request, env: Env): Promise
   const usersResult = await env.DB.prepare(
     "SELECT id, email, display_name, role, password_hash, password_updated_at, created_at, updated_at, " +
     "last_login_ip, last_login_at, email_verified_at, avatar_data_url, pending_email, pending_email_expires_at, " +
-    "pending_email_sent_at, presence_status, presence_updated_at FROM users ORDER BY created_at DESC LIMIT 200"
+    "pending_email_sent_at, presence_status, presence_updated_at, school_id, school_name, school_province, school_province_code, " +
+    "school_district, school_district_code, school_type, school_website, school_selected_at, " +
+    "school_change_requested_json, school_change_requested_at, school_change_status, school_change_reviewed_by, school_change_reviewed_at " +
+    "FROM users ORDER BY created_at DESC LIMIT 200"
   ).all<UserRow>();
   const sessionsResult = await env.DB.prepare(
     "SELECT id, user_id, created_at, expires_at, last_seen_at, user_agent, ip_address " +
@@ -1291,6 +1560,8 @@ async function handleAdminAccountsSensitive(request: Request, env: Env): Promise
         avatar_bytes: avatarBytes,
         presence_status: normalizePresenceStatus(user.presence_status || ""),
         presence_updated_at: user.presence_updated_at || "",
+        school: publicSchoolFromRow(user),
+        school_change_request: parsePendingSchoolChange(user),
         pending_email: user.pending_email || "",
         pending_email_expires_at: user.pending_email_expires_at || "",
         pending_email_sent_at: user.pending_email_sent_at || "",
@@ -1574,14 +1845,17 @@ async function handleChatHistoryDelete(env: Env, userId: string, rawChatId: stri
 async function handleDmUsers(request: Request, env: Env): Promise<Response> {
   const auth = await requireAuth(request, env);
   if (auth instanceof Response) return auth;
+  const schoolRequired = await ensureSchoolSelected(auth);
+  if (schoolRequired) return schoolRequired;
   const now = new Date().toISOString();
 
   const rows = await env.DB.prepare(
     "SELECT u.id, u.email, u.display_name, u.role, u.avatar_data_url, u.email_verified_at, u.created_at, " +
-    "u.presence_status, u.presence_updated_at, MAX(s.last_seen_at) AS last_seen_at " +
+    "u.school_id, u.school_name, u.school_province, u.school_province_code, u.school_district, u.school_district_code, " +
+    "u.school_type, u.school_website, u.school_selected_at, u.presence_status, u.presence_updated_at, MAX(s.last_seen_at) AS last_seen_at " +
     "FROM users u LEFT JOIN sessions s ON s.user_id = u.id AND s.expires_at > ? " +
-    "WHERE u.id <> ? GROUP BY u.id ORDER BY lower(u.display_name), lower(u.email) LIMIT 300"
-  ).bind(now, auth.user.id).all<Record<string, unknown>>();
+    "WHERE u.id <> ? AND u.school_id = ? GROUP BY u.id ORDER BY lower(u.display_name), lower(u.email) LIMIT 300"
+  ).bind(now, auth.user.id, auth.user.school?.id || "").all<Record<string, unknown>>();
 
   const users = (rows.results || []).map(publicDmUser);
   return json({ success: true, users });
@@ -1590,6 +1864,8 @@ async function handleDmUsers(request: Request, env: Env): Promise<Response> {
 async function handleDmThreads(request: Request, env: Env): Promise<Response> {
   const auth = await requireAuth(request, env);
   if (auth instanceof Response) return auth;
+  const schoolRequired = await ensureSchoolSelected(auth);
+  if (schoolRequired) return schoolRequired;
   const userId = auth.user.id;
   const now = new Date().toISOString();
 
@@ -1605,10 +1881,11 @@ async function handleDmThreads(request: Request, env: Env): Promise<Response> {
     if (!otherId) continue;
     const other = await env.DB.prepare(
       "SELECT u.id, u.email, u.display_name, u.role, u.avatar_data_url, u.email_verified_at, u.created_at, " +
-      "u.presence_status, u.presence_updated_at, MAX(s.last_seen_at) AS last_seen_at " +
+      "u.school_id, u.school_name, u.school_province, u.school_province_code, u.school_district, u.school_district_code, " +
+      "u.school_type, u.school_website, u.school_selected_at, u.presence_status, u.presence_updated_at, MAX(s.last_seen_at) AS last_seen_at " +
       "FROM users u LEFT JOIN sessions s ON s.user_id = u.id AND s.expires_at > ? " +
-      "WHERE u.id = ? GROUP BY u.id"
-    ).bind(now, otherId).first<Record<string, unknown>>();
+      "WHERE u.id = ? AND u.school_id = ? GROUP BY u.id"
+    ).bind(now, otherId, auth.user.school?.id || "").first<Record<string, unknown>>();
     if (!other) continue;
     const latest = await env.DB.prepare(
       "SELECT * FROM dm_messages WHERE deleted_at IS NULL AND " +
@@ -1636,7 +1913,8 @@ async function handleDmMessagesGet(request: Request, env: Env, url: URL): Promis
   const otherId = String(url.searchParams.get("user_id") || "").trim();
   if (!otherId || otherId === userId) return json({ success: false, error: "Mesajlaşılacak hesap seçilemedi." }, 400);
 
-  const other = await getDmUserById(env, otherId);
+  const other = await ensureSameSchool(env, auth, otherId);
+  if (other instanceof Response) return other;
   if (!other) return json({ success: false, error: "Hesap bulunamadı." }, 404);
 
   const now = new Date().toISOString();
@@ -1663,7 +1941,8 @@ async function handleDmMessageSend(request: Request, env: Env, ctx: ExecutionCon
   const recipientId = String(payload.recipient_id || "").trim();
   if (!recipientId || recipientId === senderId) return json({ success: false, error: "Geçerli bir alıcı seç." }, 400);
 
-  const recipient = await getDmUserById(env, recipientId);
+  const recipient = await ensureSameSchool(env, auth, recipientId);
+  if (recipient instanceof Response) return recipient;
   if (!recipient) return json({ success: false, error: "Alıcı hesap bulunamadı." }, 404);
 
   const body = cleanDmText(payload.body || payload.text || "", DM_TEXT_LIMIT);
@@ -1731,6 +2010,9 @@ async function handleDmRead(request: Request, env: Env): Promise<Response> {
   const payload = await readJson<Record<string, unknown>>(request);
   const otherId = String(payload.user_id || "").trim();
   if (!otherId || otherId === auth.user.id) return json({ success: false, error: "Hesap seçilemedi." }, 400);
+  const other = await ensureSameSchool(env, auth, otherId);
+  if (other instanceof Response) return other;
+  if (!other) return json({ success: false, error: "Hesap bulunamadı." }, 404);
   const now = new Date().toISOString();
   await env.DB.prepare(
     "UPDATE dm_messages SET read_at = ? WHERE sender_id = ? AND recipient_id = ? AND read_at IS NULL"
@@ -1852,7 +2134,10 @@ function publicUser(user: UserRow): PublicUser {
     email_verified_at: user.email_verified_at || "",
     avatar_data_url: user.avatar_data_url || "",
     presence_status: normalizePresenceStatus(user.presence_status || ""),
-    presence_updated_at: user.presence_updated_at || ""
+    presence_updated_at: user.presence_updated_at || "",
+    school: publicSchoolFromRow(user),
+    school_change_request: parsePendingSchoolChange(user),
+    school_required: !user.school_id
   };
 }
 
@@ -1860,7 +2145,8 @@ async function getDmUserById(env: Env, id: string): Promise<Record<string, unkno
   const now = new Date().toISOString();
   return await env.DB.prepare(
     "SELECT u.id, u.email, u.display_name, u.role, u.avatar_data_url, u.email_verified_at, u.created_at, " +
-    "u.presence_status, u.presence_updated_at, MAX(s.last_seen_at) AS last_seen_at " +
+    "u.school_id, u.school_name, u.school_province, u.school_province_code, u.school_district, u.school_district_code, " +
+    "u.school_type, u.school_website, u.school_selected_at, u.presence_status, u.presence_updated_at, MAX(s.last_seen_at) AS last_seen_at " +
     "FROM users u LEFT JOIN sessions s ON s.user_id = u.id AND s.expires_at > ? " +
     "WHERE u.id = ? GROUP BY u.id"
   ).bind(now, id).first<Record<string, unknown>>();
@@ -1882,6 +2168,17 @@ function publicDmUser(user: Record<string, unknown>): Record<string, unknown> {
     email_verified: Boolean(user.email_verified_at),
     avatar_data_url: String(user.avatar_data_url || ""),
     created_at: String(user.created_at || ""),
+    school: publicSchoolFromRow({
+      school_id: String(user.school_id || ""),
+      school_name: String(user.school_name || ""),
+      school_province: String(user.school_province || ""),
+      school_province_code: String(user.school_province_code || ""),
+      school_district: String(user.school_district || ""),
+      school_district_code: String(user.school_district_code || ""),
+      school_type: String(user.school_type || ""),
+      school_website: String(user.school_website || ""),
+      school_selected_at: String(user.school_selected_at || "")
+    }),
     presence_status: presenceStatus,
     presence_updated_at: String(user.presence_updated_at || ""),
     last_seen_at: lastSeenAt,
@@ -2509,6 +2806,240 @@ function bearerToken(request: Request): string {
 function optionalEnv(env: Env, key: string): string {
   const value = (env as unknown as Record<string, unknown>)[key];
   return typeof value === "string" ? value : "";
+}
+
+async function loadSchools(env: Env): Promise<SchoolRecord[]> {
+  const url = optionalEnv(env, "MEB_SCHOOLS_CSV_URL") || MEB_SCHOOLS_DEFAULT_CSV_URL;
+  const now = Date.now();
+  if (schoolsCache && schoolsCache.url === url && now - schoolsCache.loadedAt < 24 * 60 * 60 * 1000) {
+    return schoolsCache.schools;
+  }
+  if (schoolsLoadPromise) return schoolsLoadPromise;
+  schoolsLoadPromise = (async () => {
+    const response = await fetch(url, {
+      cf: { cacheTtl: 86400, cacheEverything: true },
+      headers: { accept: "text/csv,*/*" }
+    });
+    if (!response.ok) {
+      throw new Error(`Okul listesi alınamadı (${response.status}).`);
+    }
+    const csv = await response.text();
+    const schools = parseSchoolsCsv(csv);
+    schoolsCache = { url, loadedAt: Date.now(), schools };
+    return schools;
+  })();
+  try {
+    return await schoolsLoadPromise;
+  } finally {
+    schoolsLoadPromise = null;
+  }
+}
+
+function parseSchoolsCsv(csv: string): SchoolRecord[] {
+  const rows = parseCsvRows(csv);
+  if (rows.length <= 1) return [];
+  const header = rows[0].map((item) => schoolLookupKey(item));
+  const index = (name: string) => header.indexOf(schoolLookupKey(name));
+  const countryIndex = index("ulke_adi");
+  const provinceIndex = index("il_adi");
+  const provinceCodeIndex = index("il_kodu");
+  const districtIndex = index("ilce_adi");
+  const districtCodeIndex = index("ilce_kodu");
+  const nameIndex = index("okul_adi");
+  const websiteIndex = index("okul_website");
+  const typeIndex = index("tip");
+  const schools: SchoolRecord[] = [];
+  for (let rowIndex = 1; rowIndex < rows.length; rowIndex += 1) {
+    const row = rows[rowIndex];
+    const province = normalizeSchoolText(row[provinceIndex] || "");
+    const district = normalizeSchoolText(row[districtIndex] || "");
+    const name = normalizeSchoolText(row[nameIndex] || "");
+    if (!province || !district || !name) continue;
+    const school: SchoolRecord = {
+      id: "",
+      country: normalizeSchoolText(row[countryIndex] || "Türkiye") || "Türkiye",
+      province,
+      province_code: normalizeSchoolText(row[provinceCodeIndex] || ""),
+      district,
+      district_code: normalizeSchoolText(row[districtCodeIndex] || ""),
+      name,
+      website: normalizeSchoolText(row[websiteIndex] || ""),
+      type: normalizeSchoolText(row[typeIndex] || "")
+    };
+    school.id = makeSchoolId(school);
+    schools.push(school);
+  }
+  return schools;
+}
+
+function parseCsvRows(csv: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = "";
+  let quoted = false;
+  for (let index = 0; index < csv.length; index += 1) {
+    const char = csv[index];
+    if (quoted) {
+      if (char === '"' && csv[index + 1] === '"') {
+        cell += '"';
+        index += 1;
+      } else if (char === '"') {
+        quoted = false;
+      } else {
+        cell += char;
+      }
+      continue;
+    }
+    if (char === '"') {
+      quoted = true;
+    } else if (char === ",") {
+      row.push(cell);
+      cell = "";
+    } else if (char === "\n") {
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = "";
+    } else if (char !== "\r") {
+      cell += char;
+    }
+  }
+  if (cell || row.length) {
+    row.push(cell);
+    rows.push(row);
+  }
+  return rows;
+}
+
+function normalizeSchoolText(value: unknown): string {
+  return String(value || "").replace(/\s+/g, " ").trim();
+}
+
+function schoolLookupKey(value: unknown): string {
+  return normalizeSchoolText(value)
+    .toLocaleLowerCase("tr-TR")
+    .replace(/ı/g, "i")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function makeSchoolId(school: SchoolRecord): string {
+  const provinceCode = school.province_code || "0";
+  const districtCode = school.district_code || "0";
+  const hash = stableSchoolHash([
+    school.country,
+    school.province,
+    school.district,
+    school.name,
+    school.website,
+    school.type
+  ].join("|"));
+  return `${provinceCode}-${districtCode}-${hash}`;
+}
+
+function stableSchoolHash(value: string): string {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+async function findSchoolById(env: Env, schoolId: string): Promise<SchoolRecord | null> {
+  const id = String(schoolId || "").trim();
+  if (!id || id.length > 80) return null;
+  const schools = await loadSchools(env);
+  return schools.find((school) => school.id === id) || null;
+}
+
+function publicSchoolFromRow(user: Pick<UserRow, "school_id" | "school_name" | "school_province" | "school_province_code" | "school_district" | "school_district_code" | "school_type" | "school_website" | "school_selected_at">): PublicSchool | null {
+  if (!user.school_id || !user.school_name) return null;
+  return {
+    id: user.school_id,
+    name: user.school_name,
+    province: user.school_province || "",
+    province_code: user.school_province_code || "",
+    district: user.school_district || "",
+    district_code: user.school_district_code || "",
+    type: user.school_type || "",
+    website: user.school_website || "",
+    selected_at: user.school_selected_at || ""
+  };
+}
+
+function publicSchoolFromRecord(school: SchoolRecord, selectedAt = ""): PublicSchool {
+  return {
+    id: school.id,
+    name: school.name,
+    province: school.province,
+    province_code: school.province_code,
+    district: school.district,
+    district_code: school.district_code,
+    type: school.type,
+    website: school.website,
+    selected_at: selectedAt
+  };
+}
+
+function parsePendingSchoolChange(user: UserRow): PublicSchoolChangeRequest | null {
+  const status = String(user.school_change_status || "");
+  const raw = String(user.school_change_requested_json || "");
+  if (!status || !raw) return null;
+  try {
+    const school = JSON.parse(raw) as SchoolRecord;
+    return {
+      status,
+      requested_at: user.school_change_requested_at || "",
+      reviewed_at: user.school_change_reviewed_at || "",
+      school: school && school.id ? publicSchoolFromRecord(school) : null
+    };
+  } catch {
+    return {
+      status,
+      requested_at: user.school_change_requested_at || "",
+      reviewed_at: user.school_change_reviewed_at || "",
+      school: null
+    };
+  }
+}
+
+function bindSchoolValues(school: SchoolRecord): unknown[] {
+  return [
+    school.id,
+    school.name,
+    school.province,
+    school.province_code,
+    school.district,
+    school.district_code,
+    school.type,
+    school.website
+  ];
+}
+
+async function ensureSchoolSelected(auth: AuthContext): Promise<Response | null> {
+  if (auth.user.school && auth.user.school.id) return null;
+  return json({
+    success: false,
+    school_required: true,
+    error: "DM kullanmak için önce okulunu seçmelisin."
+  }, 403);
+}
+
+async function ensureSameSchool(env: Env, auth: AuthContext, otherId: string): Promise<Record<string, unknown> | Response> {
+  const schoolRequired = await ensureSchoolSelected(auth);
+  if (schoolRequired) return schoolRequired;
+  const other = await getDmUserById(env, otherId);
+  if (other instanceof Response) return other;
+  if (!other) return json({ success: false, error: "Hesap bulunamadı." }, 404);
+  if (String(other.school_id || "") !== String(auth.user.school?.id || "")) {
+    return json({
+      success: false,
+      school_mismatch: true,
+      error: "DM sadece kendi okulundaki kullanıcılarla açık."
+    }, 403);
+  }
+  return other;
 }
 
 async function handleLibrary(url: URL, env: Env): Promise<Response> {
@@ -3314,10 +3845,14 @@ async function readTextSnippet(response: Response, limit: number): Promise<strin
   return output.slice(0, limit);
 }
 
-function json(data: unknown, status = 200): Response {
+function json(data: unknown, status = 200, extraHeaders?: HeadersInit): Response {
+  const headers = new Headers(JSON_HEADERS);
+  if (extraHeaders) {
+    new Headers(extraHeaders).forEach((value, key) => headers.set(key, value));
+  }
   return new Response(JSON.stringify(data), {
     status,
-    headers: JSON_HEADERS
+    headers
   });
 }
 

@@ -6584,6 +6584,138 @@ body.chat-route-lock #libraryScreen {
   line-height: 1.5;
 }
 
+.settings-school-card {
+  display: grid;
+  gap: 10px;
+  padding: 13px;
+  border: 1px solid rgba(147,197,253,0.16);
+  border-radius: 18px;
+  background: rgba(255,255,255,0.055);
+}
+
+.settings-school-name {
+  color: var(--text-primary);
+  font-weight: 950;
+  line-height: 1.35;
+}
+
+.settings-school-meta {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.school-picker-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 390;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(3,7,18,0.72);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.24s ease;
+}
+
+.school-picker-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.school-picker-panel {
+  width: min(560px, 100%);
+  max-height: min(760px, calc(100svh - 32px));
+  overflow: auto;
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 24px;
+  border: 1px solid rgba(147,197,253,0.18);
+  background: linear-gradient(145deg, rgba(18,31,58,0.98), rgba(6,14,31,0.96));
+  box-shadow: 0 30px 96px rgba(0,0,0,0.52), inset 0 1px rgba(255,255,255,0.08);
+}
+
+.school-picker-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.school-picker-kicker {
+  color: #93c5fd;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.school-picker-title {
+  margin-top: 4px;
+  color: var(--text-primary);
+  font-size: 24px;
+  font-weight: 950;
+}
+
+.school-picker-lead {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.school-picker-form {
+  display: grid;
+  gap: 12px;
+}
+
+.school-select,
+.school-search {
+  min-height: 46px;
+  width: 100%;
+  border: 1px solid rgba(147,197,253,0.18);
+  border-radius: 16px;
+  background: rgba(3,7,18,0.38);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  outline: none;
+  padding: 0 13px;
+}
+
+.school-search {
+  padding: 0 14px;
+}
+
+.school-select:focus,
+.school-search:focus {
+  border-color: rgba(96,165,250,0.54);
+  box-shadow: 0 0 0 4px rgba(37,99,235,0.13);
+}
+
+.school-status {
+  min-height: 18px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.school-status.error { color: #fca5a5; }
+.school-status.success { color: #93c5fd; }
+
+.school-picker-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+body.school-required .school-picker-overlay .cfg-close-btn,
+body.school-required .school-picker-overlay .school-picker-cancel {
+  display: none;
+}
+
 .email-code-overlay {
   position: fixed;
   inset: 0;
@@ -10685,7 +10817,7 @@ body::after,
         <article class="home-feature-card">
           <div class="home-feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/><path d="M8 9h8"/><path d="M8 13h5"/></svg></div>
           <div class="home-feature-title">Kitap bağlamlı sohbet</div>
-          <p class="home-feature-text">Seçtiğin kitabın içeriğiyle soru sor, özet çıkar ve yanıtları markdown düzeniyle oku.</p>
+          <p class="home-feature-text">Seçtiğin kitabın içeriğiyle soru sor, özet çıkar ve yanıtları başlıklar, listeler ve bağlantılarla düzenli şekilde oku.</p>
         </article>
         <article class="home-feature-card">
           <div class="home-feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 5h18"/><path d="M3 12h12"/><path d="M3 19h18"/></svg></div>
@@ -10695,7 +10827,7 @@ body::after,
         <article class="home-feature-card">
           <div class="home-feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4 20-7Z"/></svg></div>
           <div class="home-feature-title">DM ve paylaşım</div>
-          <p class="home-feature-text">Kullanıcılarla mesajlaş, dosya ekle ve AI yanıtlarını markdown korunarak DM içinde ilet.</p>
+          <p class="home-feature-text">Kendi okulundaki kullanıcılarla mesajlaş, dosya ekle ve AI yanıtlarını düzeni bozulmadan ilet.</p>
         </article>
       </section>
 
@@ -11291,6 +11423,14 @@ body::after,
           </div>
           <div class="settings-hint" id="settingsEmailHint">E-posta doğrulaması hesap güvenliği için kullanılır.</div>
         </div>
+        <div class="settings-field">
+          <span class="settings-label">Okul</span>
+          <div class="settings-school-card">
+            <div class="settings-school-name" id="settingsSchoolName">Okul seçilmedi</div>
+            <div class="settings-school-meta" id="settingsSchoolMeta">DM kullanmak için okulunu seçmelisin.</div>
+            <button class="account-menu-btn" type="button" onclick="openSchoolPicker({ mode: 'change' })">Okulu değiştir</button>
+          </div>
+        </div>
         <button class="account-menu-btn settings-password-btn" type="button" onclick="openPasswordChangeModal()">Şifreyi değiştir</button>
       </div>
     </div>
@@ -11414,6 +11554,42 @@ body::after,
   </div>
 </div>
 
+<div class="school-picker-overlay" id="schoolPickerOverlay" role="dialog" aria-modal="true" aria-labelledby="schoolPickerTitle">
+  <div class="school-picker-panel">
+    <div class="school-picker-head">
+      <div>
+        <div class="school-picker-kicker" id="schoolPickerKicker">Okul seçimi</div>
+        <div class="school-picker-title" id="schoolPickerTitle">Okulunu seç</div>
+      </div>
+      <button class="cfg-close-btn" type="button" onclick="closeSchoolPicker()" aria-label="Okul seçimini kapat">&#x2715;</button>
+    </div>
+    <div class="school-picker-lead" id="schoolPickerLead">DM özelliği sadece aynı okulda olan kullanıcılar arasında açıktır. İl, ilçe ve okulunu seçerek devam et.</div>
+    <div class="school-picker-form">
+      <label class="settings-field">
+        <span class="settings-label">İl</span>
+        <select class="school-select" id="schoolProvinceSelect" onchange="handleSchoolProvinceChange()"></select>
+      </label>
+      <label class="settings-field">
+        <span class="settings-label">İlçe</span>
+        <select class="school-select" id="schoolDistrictSelect" onchange="handleSchoolDistrictChange()" disabled></select>
+      </label>
+      <label class="settings-field">
+        <span class="settings-label">Okul ara</span>
+        <input class="school-search" id="schoolSearchInput" type="search" placeholder="Okul adını yaz..." oninput="debouncedLoadSchools()">
+      </label>
+      <label class="settings-field">
+        <span class="settings-label">Okul</span>
+        <select class="school-select" id="schoolSelect" disabled></select>
+      </label>
+      <div class="school-status" id="schoolPickerStatus"></div>
+    </div>
+    <div class="school-picker-actions">
+      <button class="btn btn-ghost school-picker-cancel" type="button" onclick="closeSchoolPicker()">İptal</button>
+      <button class="btn btn-primary" id="schoolSubmitBtn" type="button" onclick="submitSchoolSelection()">Kaydet</button>
+    </div>
+  </div>
+</div>
+
 <div class="admin-tools-overlay" id="adminToolsOverlay" onclick="if(event.target===this)closeAdminTools()">
   <div class="admin-tools-panel">
     <div class="admin-tools-head">
@@ -11424,6 +11600,10 @@ body::after,
       <button class="cfg-close-btn" type="button" onclick="closeAdminTools()">&#x2715;</button>
     </div>
     <div class="admin-stats" id="adminStats"></div>
+    <div class="admin-privacy-section" id="adminSchoolRequestsSection">
+      <div class="admin-privacy-title">Okul değişikliği talepleri</div>
+      <div class="admin-privacy-list" id="adminSchoolRequestsList"></div>
+    </div>
     <div class="admin-sensitive-actions">
       <button class="account-menu-btn" type="button" onclick="unlockAdminSensitive()">Kilitli detayları aç</button>
       <div class="admin-sensitive-note">Şifreler düz metin olarak saklanmaz. Bu kilitli görünüm; profil verisi, sohbet geçmişi, DM özetleri, ek dosya bilgileri ve cihaz oturumlarını gösterir.</div>
@@ -11752,6 +11932,7 @@ async function activateAppRoute(route, options) {
     closeChatSidebar({ preserveRoute: true });
     closeDmOverlay({ preserveRoute: true });
     hideLoadingOverlay(false);
+    maybePromptForSchool();
     return;
   }
 
@@ -11768,6 +11949,7 @@ async function activateAppRoute(route, options) {
   if (!_appStarted && !options.boot) showLoadingOverlay('Kişisel alan açılıyor...');
   await startApp();
   hideLoadingOverlay(true);
+  maybePromptForSchool();
 
   if (route === 'chat') openChatSidebar({ routeOpen: true });
   else closeChatSidebar({ preserveRoute: true });
@@ -12328,6 +12510,7 @@ async function submitAccountAuth(event) {
     showLoadingOverlay('Kişisel alan açılıyor...');
     hideAccountAuth();
     await navigateApp(_routeAfterAuth || '/library', { replace: true, authenticated: true });
+    maybePromptForSchool();
     if (_accountAuthMode === 'signup' && _accountUser && !_accountUser.email_verified) {
       if (data.email_delivery_configured === false) {
         showToast('warning', 'Kod gönderimi bekliyor', 'Hesabın açıldı; e-postana kod göndermek için servis hazırlanıyor.', 6500);
@@ -12372,6 +12555,9 @@ function updateAccountUI() {
   if (profileInput) profileInput.value = _accountUser ? name : '';
   document.body.classList.toggle('app-authenticated', !!_accountUser);
   updateHomeAuthUI();
+  if (!_accountUser) forceCloseSchoolPicker();
+  updateSchoolSettingsUI();
+  maybePromptForSchool();
 }
 
 function mountAccountMenu() {
@@ -12629,9 +12815,12 @@ updateAccountUI = function() {
     verify.classList.toggle('verified', ok);
     verify.textContent = ok ? '✓ E-posta doğrulandı' : 'E-posta doğrulaması bekliyor';
   }
+  if (!_accountUser) forceCloseSchoolPicker();
   renderPresencePicker(user.presence_status || 'online');
   updateProfileStatusToggle(user.presence_status || 'online');
   updateVerificationPanel();
+  updateSchoolSettingsUI();
+  maybePromptForSchool();
 };
 
 saveAccountProfile = async function() {
@@ -12649,6 +12838,7 @@ function openProfileSettings() {
   closeProfilePresencePicker();
   updateProfilePhotoPreview();
   updateVerificationPanel();
+  updateSchoolSettingsUI();
   document.getElementById('profileSettingsOverlay').classList.add('active');
 }
 
@@ -12697,6 +12887,257 @@ function updateVerificationPanel() {
   state.classList.add('pending');
   btn.textContent = 'Doğrula';
   hint.textContent = 'E-postana gönderdiğimiz kodla adresini doğrulayabilirsin.';
+}
+
+function accountSchool() {
+  return _accountUser && _accountUser.school ? _accountUser.school : null;
+}
+
+function accountHasSchool() {
+  const school = accountSchool();
+  return !!(school && school.id);
+}
+
+function schoolLabel(school) {
+  if (!school || !school.name) return 'Okul seçilmedi';
+  return school.name;
+}
+
+function schoolMeta(school) {
+  if (!school || !school.name) return 'DM kullanmak için okulunu seçmelisin.';
+  const parts = [];
+  if (school.province) parts.push(school.province);
+  if (school.district) parts.push(school.district);
+  if (school.type) parts.push(school.type);
+  return parts.join(' / ') || 'Okul bilgisi kayıtlı.';
+}
+
+function updateSchoolSettingsUI() {
+  const name = document.getElementById('settingsSchoolName');
+  const meta = document.getElementById('settingsSchoolMeta');
+  const school = accountSchool();
+  const request = _accountUser && _accountUser.school_change_request;
+  if (name) name.textContent = schoolLabel(school);
+  if (meta) {
+    let text = schoolMeta(school);
+    if (request && request.status === 'pending' && request.school) {
+      text += ' · Bekleyen değişiklik: ' + schoolLabel(request.school);
+    } else if (!school) {
+      text = 'DM sadece aynı okulda olan kullanıcılar için açık. Devam etmek için okulunu seç.';
+    }
+    meta.textContent = text;
+  }
+}
+
+function setSchoolPickerStatus(message, type) {
+  const el = document.getElementById('schoolPickerStatus');
+  if (!el) return;
+  el.textContent = message || '';
+  el.classList.remove('error', 'success');
+  if (type) el.classList.add(type);
+}
+
+function setSchoolSelectOptions(select, items, placeholder, labelFn) {
+  if (!select) return;
+  const html = ['<option value="">' + escHtml(placeholder || 'Seç') + '</option>'];
+  (items || []).forEach(function(item) {
+    const value = item.id || item.name || '';
+    const label = labelFn ? labelFn(item) : (item.name || value);
+    html.push('<option value="' + escHtml(value) + '">' + escHtml(label) + '</option>');
+  });
+  select.innerHTML = html.join('');
+}
+
+function resetSchoolPickerLists() {
+  setSchoolSelectOptions(document.getElementById('schoolProvinceSelect'), [], 'İl yükleniyor...');
+  setSchoolSelectOptions(document.getElementById('schoolDistrictSelect'), [], 'Önce il seç');
+  setSchoolSelectOptions(document.getElementById('schoolSelect'), [], 'Önce ilçe seç');
+  const district = document.getElementById('schoolDistrictSelect');
+  const school = document.getElementById('schoolSelect');
+  if (district) district.disabled = true;
+  if (school) school.disabled = true;
+}
+
+async function openSchoolPicker(options) {
+  options = options || {};
+  if (!_accountUser) {
+    showAccountAuth();
+    return;
+  }
+  _schoolPickerMode = options.mode === 'change' ? 'change' : 'initial';
+  _schoolPickerRequired = !!options.required || !accountHasSchool();
+  document.body.classList.toggle('school-required', _schoolPickerRequired);
+  const overlay = document.getElementById('schoolPickerOverlay');
+  const kicker = document.getElementById('schoolPickerKicker');
+  const title = document.getElementById('schoolPickerTitle');
+  const lead = document.getElementById('schoolPickerLead');
+  const submit = document.getElementById('schoolSubmitBtn');
+  if (kicker) kicker.textContent = _schoolPickerMode === 'change' ? 'Okul değişikliği' : 'Okul seçimi';
+  if (title) title.textContent = _schoolPickerMode === 'change' ? 'Yeni okulunu seç' : 'Okulunu seç';
+  if (lead) lead.textContent = _schoolPickerMode === 'change'
+    ? 'Okul değişiklikleri yönetici onayından sonra geçerli olur.'
+    : 'DM özelliği sadece aynı okulda olan kullanıcılar arasında açıktır. İl, ilçe ve okulunu seçerek devam et.';
+  if (submit) submit.textContent = _schoolPickerMode === 'change' && accountHasSchool() ? 'Onaya gönder' : 'Kaydet';
+  const search = document.getElementById('schoolSearchInput');
+  if (search) search.value = '';
+  setSchoolPickerStatus('', '');
+  if (overlay) overlay.classList.add('active');
+  resetSchoolPickerLists();
+  await loadSchoolProvinces();
+}
+
+function closeSchoolPicker() {
+  if (_schoolPickerRequired && !accountHasSchool()) return;
+  forceCloseSchoolPicker();
+}
+
+function forceCloseSchoolPicker() {
+  const overlay = document.getElementById('schoolPickerOverlay');
+  if (overlay) overlay.classList.remove('active');
+  document.body.classList.remove('school-required');
+  _schoolPickerRequired = false;
+}
+
+function maybePromptForSchool() {
+  if (!_accountUser || accountHasSchool()) {
+    if (accountHasSchool()) {
+      document.body.classList.remove('school-required');
+      const overlay = document.getElementById('schoolPickerOverlay');
+      if (overlay && overlay.classList.contains('active') && _schoolPickerRequired) closeSchoolPicker();
+    }
+    return;
+  }
+  if (document.body.classList.contains('account-auth-visible')) return;
+  openSchoolPicker({ required: true });
+}
+
+async function loadSchoolProvinces() {
+  const select = document.getElementById('schoolProvinceSelect');
+  if (!select) return;
+  setSchoolPickerStatus('İller yükleniyor...', '');
+  try {
+    const res = await fetch('/api/schools/provinces', { cache: 'force-cache' });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'İller yüklenemedi.');
+    setSchoolSelectOptions(select, data.provinces || [], 'İl seç');
+    _schoolProvincesLoaded = true;
+    setSchoolPickerStatus('', '');
+    const school = accountSchool();
+    if (school && school.province) {
+      select.value = school.province;
+      await handleSchoolProvinceChange({ preserveDistrict: true });
+    }
+  } catch(e) {
+    setSchoolPickerStatus(e.message || 'İller yüklenemedi.', 'error');
+  }
+}
+
+async function handleSchoolProvinceChange(options) {
+  options = options || {};
+  const province = String((document.getElementById('schoolProvinceSelect') || {}).value || '');
+  const district = document.getElementById('schoolDistrictSelect');
+  const schoolSelect = document.getElementById('schoolSelect');
+  setSchoolSelectOptions(district, [], province ? 'İlçe yükleniyor...' : 'Önce il seç');
+  setSchoolSelectOptions(schoolSelect, [], 'Önce ilçe seç');
+  if (district) district.disabled = !province;
+  if (schoolSelect) schoolSelect.disabled = true;
+  if (!province) return;
+  setSchoolPickerStatus('İlçeler yükleniyor...', '');
+  try {
+    const res = await fetch('/api/schools/districts?province=' + encodeURIComponent(province), { cache: 'force-cache' });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'İlçeler yüklenemedi.');
+    setSchoolSelectOptions(district, data.districts || [], 'İlçe seç');
+    setSchoolPickerStatus('', '');
+    const current = accountSchool();
+    if (options.preserveDistrict && current && current.district && district) {
+      district.value = current.district;
+      await handleSchoolDistrictChange({ preserveSchool: true });
+    }
+  } catch(e) {
+    setSchoolPickerStatus(e.message || 'İlçeler yüklenemedi.', 'error');
+  }
+}
+
+async function handleSchoolDistrictChange(options) {
+  options = options || {};
+  await loadSchoolList(options);
+}
+
+function debouncedLoadSchools() {
+  clearTimeout(_schoolLoadTimer);
+  _schoolLoadTimer = setTimeout(function() { loadSchoolList({ preserveSchool: false }); }, 220);
+}
+
+async function loadSchoolList(options) {
+  options = options || {};
+  const province = String((document.getElementById('schoolProvinceSelect') || {}).value || '');
+  const district = String((document.getElementById('schoolDistrictSelect') || {}).value || '');
+  const query = String((document.getElementById('schoolSearchInput') || {}).value || '');
+  const select = document.getElementById('schoolSelect');
+  setSchoolSelectOptions(select, [], district ? 'Okullar yükleniyor...' : 'Önce ilçe seç');
+  if (select) select.disabled = !district;
+  if (!province || !district) return;
+  setSchoolPickerStatus('Okullar yükleniyor...', '');
+  try {
+    const url = '/api/schools?province=' + encodeURIComponent(province) + '&district=' + encodeURIComponent(district) + '&q=' + encodeURIComponent(query);
+    const res = await fetch(url, { cache: 'force-cache' });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Okullar yüklenemedi.');
+    setSchoolSelectOptions(select, data.schools || [], 'Okul seç', function(item) {
+      return item.name + (item.type ? ' · ' + item.type : '');
+    });
+    if (select) select.disabled = false;
+    const current = accountSchool();
+    if (options.preserveSchool && current && current.id && select) select.value = current.id;
+    setSchoolPickerStatus((data.schools || []).length ? '' : 'Bu ilçe için okul bulunamadı.', (data.schools || []).length ? '' : 'error');
+  } catch(e) {
+    setSchoolPickerStatus(e.message || 'Okullar yüklenemedi.', 'error');
+  }
+}
+
+async function submitSchoolSelection() {
+  if (_schoolSubmitting) return;
+  const select = document.getElementById('schoolSelect');
+  const schoolId = String(select ? select.value || '' : '').trim();
+  if (!schoolId) {
+    setSchoolPickerStatus('Devam etmek için okul seç.', 'error');
+    return;
+  }
+  const btn = document.getElementById('schoolSubmitBtn');
+  _schoolSubmitting = true;
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = _schoolPickerMode === 'change' && accountHasSchool() ? 'Onaya gönderiliyor...' : 'Kaydediliyor...';
+  }
+  try {
+    const res = await apiFetch('/api/auth/school', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ school_id: schoolId })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Okul kaydedilemedi.');
+    _accountUser = data.user || _accountUser;
+    updateAccountUI();
+    updateSchoolSettingsUI();
+    if (data.pending_review) {
+      setSchoolPickerStatus('Okul değişikliği yönetici onayına gönderildi.', 'success');
+      showToast('info', 'Onay bekliyor', 'Okul değişikliği yönetici onayından sonra geçerli olacak.', 5200);
+    } else {
+      setSchoolPickerStatus('Okul kaydedildi.', 'success');
+      showToast('success', 'Okul kaydedildi', 'DM artık kendi okulundaki kullanıcılarla açık.', 3600);
+    }
+    closeSchoolPicker();
+  } catch(e) {
+    setSchoolPickerStatus(e.message || 'Okul kaydedilemedi.', 'error');
+  } finally {
+    _schoolSubmitting = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = _schoolPickerMode === 'change' && accountHasSchool() ? 'Onaya gönder' : 'Kaydet';
+    }
+  }
 }
 
 function accountEmailVerified() {
@@ -13371,6 +13812,7 @@ async function loadAdminTools() {
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || 'Admin araçları yüklenemedi.');
     renderAdminTools(data);
+    loadAdminSchoolRequests();
   } catch(e) {
     renderAdminTools({ error: e.message || 'Bağlantı hatası.' });
   }
@@ -13380,11 +13822,14 @@ function renderAdminTools(data) {
   const statsEl = document.getElementById('adminStats');
   const listEl = document.getElementById('adminAccountsList');
   const sensitiveEl = document.getElementById('adminSensitiveList');
+  const schoolReqEl = document.getElementById('adminSchoolRequestsList');
   if (!statsEl || !listEl) return;
   if (sensitiveEl) sensitiveEl.innerHTML = '';
+  if (schoolReqEl) schoolReqEl.innerHTML = '';
   if (data && data.loading) {
     statsEl.innerHTML = '<div class="admin-stat"><div class="admin-stat-value">...</div><div class="admin-stat-label">Yükleniyor</div></div>';
     listEl.innerHTML = '';
+    if (schoolReqEl) schoolReqEl.innerHTML = '<div class="admin-data-row">Okul talepleri yükleniyor...</div>';
     return;
   }
   if (data && data.error) {
@@ -13409,14 +13854,72 @@ function renderAdminTools(data) {
     const lastLogin = account.last_login_at ? formatAdminDate(account.last_login_at) : 'Yok';
     const lastSeen = account.last_seen_at ? formatAdminDate(account.last_seen_at) : 'Yok';
     const ip = account.last_login_ip || account.session_ip || 'Bilinmiyor';
+    const schoolLine = account.school ? ('Okul: ' + schoolLabel(account.school) + ' · ' + schoolMeta(account.school)) : 'Okul seçilmedi';
+    const pendingSchool = account.school_change_pending ? '<span class="admin-mini-badge warn">Okul talebi var</span>' : '';
     return '<div class="admin-account-row">' +
       '<div class="admin-account-main">' +
         '<div class="admin-account-name">' + escHtml(account.display_name || 'Hesap') + '</div>' +
-        '<div class="admin-account-meta">' + escHtml(account.email || '') + '<br>IP: ' + escHtml(ip) + ' · Son giriş: ' + escHtml(lastLogin) + ' · Son görülme: ' + escHtml(lastSeen) + '</div>' +
+        '<div class="admin-account-meta">' + escHtml(account.email || '') + '<br>' + escHtml(schoolLine) + '<br>IP: ' + escHtml(ip) + ' · Son giriş: ' + escHtml(lastLogin) + ' · Son görülme: ' + escHtml(lastSeen) + '</div>' +
       '</div>' +
-      '<div class="admin-account-flags">' + roles + verified + '<span class="admin-mini-badge">' + escHtml(account.session_count || 0) + ' oturum</span></div>' +
+      '<div class="admin-account-flags">' + roles + verified + pendingSchool + '<span class="admin-mini-badge">' + escHtml(account.session_count || 0) + ' oturum</span></div>' +
     '</div>';
   }).join('') || '<div class="admin-account-row"><div class="admin-account-main"><div class="admin-account-name">Hesap yok</div><div class="admin-account-meta">Henüz listelenecek kullanıcı bulunamadı.</div></div></div>';
+}
+
+async function loadAdminSchoolRequests() {
+  const target = document.getElementById('adminSchoolRequestsList');
+  if (!target) return;
+  target.innerHTML = '<div class="admin-data-row">Okul talepleri yükleniyor...</div>';
+  try {
+    const res = await apiFetch('/api/admin/school-requests', { cache: 'no-store' });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Okul talepleri yüklenemedi.');
+    renderAdminSchoolRequests(data.requests || []);
+  } catch(e) {
+    target.innerHTML = '<div class="admin-data-row">Okul talepleri açılamadı: ' + escHtml(e.message || 'Bağlantı hatası.') + '</div>';
+  }
+}
+
+function renderAdminSchoolRequests(requests) {
+  const target = document.getElementById('adminSchoolRequestsList');
+  if (!target) return;
+  if (!requests || !requests.length) {
+    target.innerHTML = '<div class="admin-data-row">Bekleyen okul değişikliği talebi yok.</div>';
+    return;
+  }
+  target.innerHTML = requests.map(function(item) {
+    const current = item.current_school ? schoolLabel(item.current_school) + ' · ' + schoolMeta(item.current_school) : 'Mevcut okul yok';
+    const requested = item.requested_school ? schoolLabel(item.requested_school) + ' · ' + schoolMeta(item.requested_school) : 'Talep okunamadı';
+    const userId = escHtml(item.user_id || '');
+    return '<div class="admin-data-row">' +
+      '<strong>' + escHtml(item.display_name || 'Hesap') + '</strong> · ' + escHtml(item.email || '') +
+      '<br>Mevcut: ' + escHtml(current) +
+      '<br>Talep: ' + escHtml(requested) +
+      '<br>Talep zamanı: ' + escHtml(item.requested_at ? formatAdminDate(item.requested_at) : 'Yok') +
+      '<div class="settings-actions" style="margin-top:10px">' +
+        '<button class="account-menu-btn" type="button" data-user-id="' + userId + '" data-action="approve" onclick="reviewSchoolRequest(this.dataset.userId, this.dataset.action)">Onayla</button>' +
+        '<button class="account-menu-btn danger" type="button" data-user-id="' + userId + '" data-action="reject" onclick="reviewSchoolRequest(this.dataset.userId, this.dataset.action)">Reddet</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+async function reviewSchoolRequest(userId, action) {
+  if (!userId || (action !== 'approve' && action !== 'reject')) return;
+  try {
+    const res = await apiFetch('/api/admin/school-requests/review', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId, action: action })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Talep güncellenemedi.');
+    showToast('success', action === 'approve' ? 'Okul onaylandı' : 'Talep reddedildi', 'Okul talebi güncellendi.', 3200);
+    loadAdminSchoolRequests();
+    loadAdminTools();
+  } catch(e) {
+    showToast('error', 'Talep güncellenemedi', e.message || 'Bağlantı hatası.', 5200);
+  }
 }
 
 function unlockAdminSensitive() {
@@ -13483,6 +13986,8 @@ function renderAdminProfileData(profile) {
     '<div class="admin-sensitive-grid">' +
       sensitiveField('Profil fotoğrafı', profile.avatar_saved ? ('Kayıtlı · ' + adminFormatBytes(profile.avatar_bytes || 0)) : 'Yok') +
       sensitiveField('Durum', adminPresenceLabel(profile.presence_status) + (profile.presence_updated_at ? ' · ' + formatAdminDate(profile.presence_updated_at) : '')) +
+      sensitiveField('Okul', profile.school ? (schoolLabel(profile.school) + ' · ' + schoolMeta(profile.school)) : 'Seçilmedi') +
+      sensitiveField('Okul değişikliği', profile.school_change_request && profile.school_change_request.school ? (profile.school_change_request.status + ' · ' + schoolLabel(profile.school_change_request.school)) : 'Yok') +
       sensitiveField('E-posta doğrulama', profile.email_verified_at ? formatAdminDate(profile.email_verified_at) : 'Doğrulanmadı') +
       sensitiveField('Bekleyen e-posta', profile.pending_email ? (profile.pending_email + ' · ' + (profile.pending_email_expires_at ? formatAdminDate(profile.pending_email_expires_at) : 'süre yok')) : 'Yok') +
       sensitiveField('Oluşturulma', profile.created_at ? formatAdminDate(profile.created_at) : 'Yok') +
@@ -13904,6 +14409,11 @@ function updateActiveChatTitle(title, prompt) {
 }
 let _libraryLoadSeq = 0;
 let _gradeSwitchTimer = null;
+let _schoolPickerMode = 'initial';
+let _schoolPickerRequired = false;
+let _schoolProvincesLoaded = false;
+let _schoolLoadTimer = null;
+let _schoolSubmitting = false;
 
 // ── Auth ────────────────────────────────────────────────────────────────────────
 function getAdminAuthToken() { return sessionStorage.getItem('admin_auth_token') || ''; }
@@ -14285,6 +14795,11 @@ function openDmOverlay(options) {
   if (!_accountUser) {
     _routeAfterAuth = '/message';
     showAccountAuth();
+    return;
+  }
+  if (!accountHasSchool()) {
+    openSchoolPicker({ required: true });
+    showToast('warning', 'Okul seçimi gerekli', 'DM kullanmak için önce okulunu seçmelisin.', 4200);
     return;
   }
   closeAccountMenu();

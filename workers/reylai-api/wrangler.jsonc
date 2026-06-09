@@ -14,6 +14,7 @@
   "vars": {
     "STATIC_ORIGIN": "https://ai.reyliar.xyz/",
     "BOOKS_REMOTE_BASE_URL": "https://thejinx1.github.io/blupblupreylai-books/",
+    "MEB_SCHOOLS_CSV_URL": "https://raw.githubusercontent.com/ensarkovankaya/meb-okullar/master/meb-okullar.csv",
     "GEMINI_API_URL": "https://generativelanguage.googleapis.com/v1beta/models",
     "GEMINI_MODEL": "gemini-3.5-flash",
     "GEMINI_FALLBACK_MODELS": "gemini-flash-latest,gemini-2.5-flash",
