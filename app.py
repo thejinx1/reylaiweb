@@ -4021,24 +4021,103 @@ body.account-menu-open .account-menu {
 
 /* Footer */
 .lib-footer {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 9px 16px;
-  padding: 13px 40px;
-  border-top: 1px solid var(--border);
+  display: block;
+  padding: clamp(54px, 8vw, 96px) 40px calc(92px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid rgba(147,197,253,0.18);
   flex-shrink: 0;
   position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(37,99,235,0.14), transparent 38%),
+    radial-gradient(circle at 82% 55%, rgba(96,165,250,0.08), transparent 36%),
+    linear-gradient(180deg, rgba(6,8,18,0.98), rgba(10,12,24,0.98));
 }
+
+.lib-footer::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(96,165,250,0.62), transparent);
+  pointer-events: none;
+}
+
 .lib-footer .net-indicator {
   position: absolute;
   right: 20px;
 }
 
+.footer-inner {
+  width: min(1376px, 100%);
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+.footer-main {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.35fr) repeat(4, minmax(120px, 0.55fr));
+  gap: clamp(24px, 4vw, 72px);
+  align-items: start;
+}
+
+.footer-brand-block {
+  min-width: 0;
+}
+
+.footer-logo-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.footer-logo {
+  width: 58px;
+  height: 58px;
+  object-fit: contain;
+  filter:
+    drop-shadow(0 0 10px rgba(255,255,255,0.42))
+    drop-shadow(0 0 18px rgba(96,165,250,0.42));
+}
+
+.footer-brand-name {
+  color: var(--text-primary);
+  font-size: 26px;
+  line-height: 1;
+  font-weight: 950;
+  letter-spacing: 0;
+}
+
+.footer-tagline {
+  max-width: 520px;
+  color: var(--text-secondary);
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.footer-col {
+  display: grid;
+  gap: 19px;
+}
+
+.footer-col-title {
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.2;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.footer-col-list {
+  display: grid;
+  gap: 17px;
+}
+
 .footer-copy {
-  font-size: 11.5px;
-  color: var(--text-muted);
+  font-size: 14px;
+  color: rgba(167,178,199,0.70);
   transition: color 0.3s ease;
   white-space: pre-wrap;
 }
@@ -4052,24 +4131,98 @@ body.account-menu-open .account-menu {
 
 .footer-brand { color: #93c5fd; font-weight: 700; }
 
-.footer-links {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  font-size: 11.5px;
-}
-
 .footer-link {
   color: var(--text-secondary);
   text-decoration: none;
-  font-weight: 800;
-  transition: color 0.2s ease, text-shadow 0.2s ease;
+  font-size: 14px;
+  font-weight: 750;
+  line-height: 1.3;
+  transition: color 0.2s ease, text-shadow 0.2s ease, transform 0.2s ease;
 }
 
-.footer-sep {
-  color: rgba(136,136,170,0.55);
+.footer-link:hover {
+  transform: translateX(2px);
+}
+
+.footer-divider {
+  height: 1px;
+  margin: clamp(42px, 6vw, 76px) 0 28px;
+  background: linear-gradient(90deg, rgba(147,197,253,0.02), rgba(147,197,253,0.16), rgba(147,197,253,0.02));
+}
+
+.footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  color: rgba(167,178,199,0.66);
+}
+
+.footer-made {
+  color: rgba(167,178,199,0.70);
+  font-size: 14px;
+  font-weight: 750;
+}
+
+#libraryScreen {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(96,165,250,0.34) transparent;
+}
+
+#libraryScreen .book-grid-wrap {
+  flex: 0 0 auto;
+  min-height: max(420px, calc(100svh - 190px));
+  overflow: visible;
+}
+
+@media (max-width: 900px) {
+  .footer-main {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .footer-brand-block {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 640px) {
+  .lib-footer {
+    padding: 44px 22px calc(108px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .footer-main {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+
+  .footer-logo-row {
+    margin-bottom: 14px;
+  }
+
+  .footer-logo {
+    width: 50px;
+    height: 50px;
+  }
+
+  .footer-brand-name {
+    font-size: 24px;
+  }
+
+  .footer-col {
+    gap: 13px;
+  }
+
+  .footer-col-list {
+    gap: 12px;
+  }
+
+  .footer-bottom {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 
 /* Library chat history drawer */
@@ -7407,7 +7560,6 @@ select {
 
 .lib-footer {
   border-top-color: rgba(32, 48, 74, 0.08);
-  background: rgba(255, 255, 255, 0.24);
   backdrop-filter: blur(18px) saturate(1.35);
   -webkit-backdrop-filter: blur(18px) saturate(1.35);
 }
@@ -8325,8 +8477,11 @@ body::after {
 }
 
 .lib-footer {
-  background: rgba(6,14,31, 0.54);
-  border-top-color: rgba(147,197,253, 0.10);
+  background:
+    radial-gradient(circle at 18% 0%, rgba(37,99,235,0.14), transparent 38%),
+    radial-gradient(circle at 82% 55%, rgba(96,165,250,0.08), transparent 36%),
+    linear-gradient(180deg, rgba(6,8,18,0.98), rgba(10,12,24,0.98));
+  border-top-color: rgba(147,197,253, 0.18);
 }
 
 .chat-history-backdrop,
@@ -9904,14 +10059,52 @@ body::after,
     </button>
   </div>
   <footer class="lib-footer">
-    <span class="footer-copy">©2026 All Copyrights Reserved.  •  made with ❤️ by reyli</span>
-    <nav class="footer-links" aria-label="Yasal bağlantılar">
-      <a class="footer-link" href="terms.html">Terms of Service</a>
-      <span class="footer-sep">•</span>
-      <a class="footer-link" href="privacy.html">Privacy Policy</a>
-      <span class="footer-sep">•</span>
-      <a class="footer-link" href="mailto:contact@reylai.xyz">contact@reylai.xyz</a>
-    </nav>
+    <div class="footer-inner">
+      <div class="footer-main">
+        <div class="footer-brand-block">
+          <div class="footer-logo-row">
+            <img src="{{ reylai_icon_src }}" class="footer-logo" alt="ReylAI">
+            <div class="footer-brand-name">ReylAI</div>
+          </div>
+          <p class="footer-tagline">Ders kitapları, sohbetler ve ReylAI araçları için tek, sakin ve hızlı çalışma alanın.</p>
+        </div>
+        <nav class="footer-col" aria-label="Site bağlantıları">
+          <div class="footer-col-title">Sites</div>
+          <div class="footer-col-list">
+            <a class="footer-link" href="#libraryScreen">Library</a>
+            <a class="footer-link" href="#" onclick="openChatSidebar(); return false;">Sohbetler</a>
+            <a class="footer-link" href="#" onclick="openPdfPicker(); return false;">Kitap Yükle</a>
+            <a class="footer-link" href="#" onclick="openDmOverlay(); return false;">Mesajlar</a>
+          </div>
+        </nav>
+        <nav class="footer-col" aria-label="Topluluk bağlantıları">
+          <div class="footer-col-title">Community</div>
+          <div class="footer-col-list">
+            <a class="footer-link" href="mailto:contact@reylai.xyz?subject=ReylAI%20Community">Discord</a>
+            <a class="footer-link" href="mailto:contact@reylai.xyz?subject=ReylAI%20About">About</a>
+          </div>
+        </nav>
+        <nav class="footer-col" aria-label="Yasal bağlantılar">
+          <div class="footer-col-title">Legal</div>
+          <div class="footer-col-list">
+            <a class="footer-link" href="privacy.html">Privacy Policy</a>
+            <a class="footer-link" href="terms.html">Terms of Service</a>
+          </div>
+        </nav>
+        <nav class="footer-col" aria-label="İletişim bağlantıları">
+          <div class="footer-col-title">Contact</div>
+          <div class="footer-col-list">
+            <a class="footer-link" href="mailto:contact@reylai.xyz">Contact us</a>
+            <a class="footer-link" href="mailto:contact@reylai.xyz">Email</a>
+          </div>
+        </nav>
+      </div>
+      <div class="footer-divider"></div>
+      <div class="footer-bottom">
+        <span class="footer-copy">©2026 All Copyrights Reserved.</span>
+        <span class="footer-made">made with ❤️ by reyli</span>
+      </div>
+    </div>
   </footer>
 </div>
 
