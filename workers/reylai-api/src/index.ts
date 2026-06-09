@@ -3037,6 +3037,7 @@ function parseMebSchoolRows(rows: MebSchoolApiRow[]): SchoolRecord[] {
   for (const row of rows) {
     const parsed = parseMebSchoolName(row.OKUL_ADI || "");
     if (!parsed) continue;
+    if (!isHighSchoolName(parsed.name)) continue;
     const officialId = normalizeSchoolText(row.YOL || "");
     const officialParts = officialId.split("/");
     const host = normalizeSchoolText(row.HOST || "").replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
@@ -3058,6 +3059,11 @@ function parseMebSchoolRows(rows: MebSchoolApiRow[]): SchoolRecord[] {
     schools.push(school);
   }
   return schools;
+}
+
+function isHighSchoolName(value: string): boolean {
+  const key = schoolLookupKey(value);
+  return key.includes("lisesi") || key.includes(" lise ") || key.endsWith(" lise");
 }
 
 function parseMebSchoolName(value: string): { province: string; district: string; name: string } | null {
