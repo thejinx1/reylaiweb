@@ -8,6 +8,11 @@ const TEXT_HEADERS = {
   "cache-control": "no-store"
 };
 
+const HTML_HEADERS = {
+  "content-type": "text/html; charset=utf-8",
+  "cache-control": "public, max-age=300"
+};
+
 const VALID_ID = /^[A-Za-z0-9_-]{6,200}$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_CONTEXT_PAGES = 8;
@@ -39,6 +44,10 @@ const GEMINI_DEFAULT_MODEL = "gemini-3.5-flash";
 const GEMINI_DEFAULT_FALLBACK_MODELS = "gemini-flash-latest,gemini-2.5-flash";
 const GEMINI_PRIMARY_RETRY_DELAYS_MS = [0, 700, 1800];
 const GEMINI_FALLBACK_RETRY_DELAYS_MS = [0, 900];
+const MISTRAL_DEFAULT_API_URL = "https://api.mistral.ai/v1/chat/completions";
+const MISTRAL_DEFAULT_MODEL = "mistral-large-latest";
+const MISTRAL_RETRY_DELAYS_MS = [0, 900];
+const AI_DEFAULT_FETCH_TIMEOUT_MS = 25000;
 const MEB_SCHOOLS_DEFAULT_API_URL = "https://www.meb.gov.tr/baglantilar/okullar/okullar_ajax.php";
 const MEB_SCHOOLS_CACHE_MS = 6 * 60 * 60 * 1000;
 const MEB_SCHOOLS_FETCH_LIMIT = 100000;
@@ -46,6 +55,7 @@ const SCHOOL_ICON_DATA_URL_LIMIT = 220_000;
 const SCHOOL_CHANGE_PENDING = "pending";
 const SCHOOL_CHANGE_APPROVED = "approved";
 const SCHOOL_CHANGE_REJECTED = "rejected";
+const BOOK_TEXT_HTML_DIR = "/reylai_assets/text";
 
 const TURKEY_PROVINCES = [
   { name: "Adana", code: "01" },
@@ -144,6 +154,7 @@ type Book = {
   pdf_source?: string;
   cover_url?: string;
   cover_data_url?: string;
+  text_html_url?: string;
   scan_status?: string;
   scan_pages?: number;
   scan_extractor?: string;
@@ -187,6 +198,20 @@ type AnalyzePayload = {
 type GeminiMessage = {
   role: "system" | "user" | "assistant";
   content: string;
+};
+
+type AiProvider = "gemini" | "mistral";
+
+type AiCompletion = {
+  provider: AiProvider;
+  model: string;
+  text: string;
+  raw: unknown;
+};
+
+type AiGenerateOptions = {
+  temperature?: number;
+  timeoutMs?: number;
 };
 
 type UserRow = {
@@ -755,6 +780,17 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
       scan_pages: scan.total_pages || scan.pages?.length || 0,
       scan_extractor: publicScanExtractor(scan.extractor || "")
     });
+  }
+
+  if (request.method === "GET" && (path === "/api/book_text" || path === "/api/book_text/")) {
+    return handleBookTextIndex(env);
+  }
+
+  if (request.method === "GET" && path.startsWith("/api/book_text/")) {
+    const rawId = (path.split("/").pop() || "").replace(/\.html$/i, "");
+    const id = safeId(rawId);
+    if (!id) return text("Kitap metni bulunamadi", 404);
+    return handleBookText(id, env);
   }
 
   if (request.method === "GET" && path.startsWith("/api/cover/")) {
@@ -3553,7 +3589,9 @@ async function analyzePayload(payload: AnalyzePayload, env: Env): Promise<Record
   const selectedId = safeId(payload.book_id || payload.drive_id || "");
   const bookName = String(payload.book_name || "Kitap").trim() || "Kitap";
 
-  if (!env.GEMINI_API_KEY) return { error: "GEMINI_API_KEY yapılandırılmamış." };
+  if (!env.GEMINI_API_KEY && !env.MISTRAL_API_KEY) {
+    return { error: "GEMINI_API_KEY veya MISTRAL_API_KEY yapılandırılmamış." };
+  }
   if (!prompt) return { error: "Prompt eksik." };
   if (!selectedId) return { error: "book_id eksik." };
 
@@ -3615,15 +3653,20 @@ async function analyzePayload(payload: AnalyzePayload, env: Env): Promise<Record
   ];
 
   try {
-    const geminiResponse = await geminiGenerateContent(env, messages, { temperature: 0.2 });
-    const result = geminiResponseText(geminiResponse);
-    if (!result) return { error: "Gemini boş yanıt döndürdü." };
+    const aiStartedAt = Date.now();
+    const aiResponse = await generateAiContent(env, messages, {
+      temperature: 0.2,
+      timeoutMs: configuredPositiveInt(env.AI_FETCH_TIMEOUT_MS, AI_DEFAULT_FETCH_TIMEOUT_MS, 5000, 55000)
+    });
+    const aiElapsedMs = Date.now() - aiStartedAt;
+    const result = aiResponse.text;
+    if (!result) return { error: `${aiProviderLabel(aiResponse.provider)} boş yanıt döndürdü.` };
 
     let chatTitle = "";
     if (payload.title_requested) {
-      chatTitle = await generateChatTitle(env, book?.title || book?.name || bookName, prompt, result);
+      chatTitle = fallbackChatTitle(prompt);
     }
-    return { result, chat_title: chatTitle };
+    return { result, chat_title: chatTitle, ai_provider: aiResponse.provider, ai_model: aiResponse.model, ai_elapsed_ms: aiElapsedMs };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const lower = message.toLowerCase();
@@ -3653,6 +3696,51 @@ async function handleServePdf(id: string, env: Env): Promise<Response> {
   return text("PDF bulunamadı", 404);
 }
 
+async function handleBookText(id: string, env: Env): Promise<Response> {
+  const path = bookTextHtmlPath(id);
+  if (await staticExists(env, path)) return Response.redirect(staticUrl(env, path), 302);
+
+  const library = await fetchLibrary(env);
+  const book = findBook(library, id);
+  const scan = await fetchScanData(env, scanKeysForBook(book, id));
+  if (!scan?.pages?.length) return text("Kitap metni bulunamadi", 404);
+  return html(bookTextHtmlDocument(id, book, scan));
+}
+
+async function handleBookTextIndex(env: Env): Promise<Response> {
+  const path = `${BOOK_TEXT_HTML_DIR}/index.html`;
+  if (await staticExists(env, path)) return Response.redirect(staticUrl(env, path), 302);
+
+  const books = await fetchLibrary(env);
+  const items: string[] = [];
+  for (const book of books) {
+    const key = bookKey(book);
+    if (!key) continue;
+    const scan = await fetchScanData(env, [key]);
+    if (!scan?.pages?.length) continue;
+    const title = bookTitleForText(book, key);
+    items.push([
+      "<li>",
+      `<a href="/api/book_text/${encodeURIComponent(key)}">${escapeHtml(title)}</a>`,
+      `<br><span class="meta">book_id: ${escapeHtml(key)} | pages: ${scan.total_pages || scan.pages.length}</span>`,
+      "</li>"
+    ].join(""));
+  }
+
+  return html([
+    bookTextHtmlHead("ReylAI book texts", `Static HTML text index for ${items.length} books.`),
+    "<main>",
+    "<header>",
+    "<h1>ReylAI book texts</h1>",
+    `<div class="meta"><span>books: ${items.length}</span></div>`,
+    "</header>",
+    `<ul class="book-list">${items.join("")}</ul>`,
+    "</main>",
+    "</body>",
+    "</html>"
+  ].join("\n"));
+}
+
 async function enrichBook(book: Book, env: Env): Promise<Book> {
   const publicBook: Book = { ...book };
   const key = publicBook.book_id || publicBook.drive_id || "";
@@ -3674,6 +3762,10 @@ async function enrichBook(book: Book, env: Env): Promise<Book> {
       publicBook.scan_pages = scan.total_pages || scan.pages?.length || 0;
       publicBook.scan_extractor = publicScanExtractor(scan.extractor || "");
     }
+    const textPath = bookTextHtmlPath(key);
+    publicBook.text_html_url = await staticExists(env, textPath)
+      ? staticUrl(env, textPath)
+      : staticUrl(env, `/api/book_text/${encodeURIComponent(key)}`);
   }
   return publicBook;
 }
@@ -3807,6 +3899,84 @@ async function redirectIfExists(env: Env, path: string): Promise<Response> {
   return Response.redirect(staticUrl(env, path), 302);
 }
 
+function bookTextHtmlPath(id: string): string {
+  return `${BOOK_TEXT_HTML_DIR}/${encodeURIComponent(id)}.html`;
+}
+
+function bookTitleForText(book: Book | undefined, id: string): string {
+  return normalizeBookName(book?.title || book?.name || id) || id;
+}
+
+function bookTextHtmlHead(title: string, description: string): string {
+  return [
+    "<!doctype html>",
+    '<html lang="tr">',
+    "<head>",
+    '<meta charset="utf-8">',
+    '<meta name="viewport" content="width=device-width, initial-scale=1">',
+    '<meta name="robots" content="index,follow">',
+    `<title>${escapeHtml(title)}</title>`,
+    `<meta name="description" content="${escapeHtml(description)}">`,
+    "<style>",
+    ":root{color-scheme:light dark;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}",
+    "body{margin:0;background:#f7f7f3;color:#1f2933;line-height:1.6;}",
+    "main{max-width:980px;margin:0 auto;padding:32px 18px 64px;}",
+    "header{border-bottom:1px solid #d8d8cf;margin-bottom:24px;padding-bottom:18px;}",
+    "h1{font-size:clamp(1.8rem,4vw,3rem);line-height:1.1;margin:0 0 12px;}",
+    "h2{font-size:1.2rem;margin:32px 0 8px;}",
+    "p{white-space:pre-wrap;margin:0;}",
+    "a{color:#0969da;}",
+    ".meta{display:flex;flex-wrap:wrap;gap:10px;color:#52616b;font-size:.95rem;}",
+    ".page{border-top:1px solid #d8d8cf;padding-top:18px;}",
+    ".book-list{list-style:none;padding:0;margin:20px 0 0;}",
+    ".book-list li{border-top:1px solid #d8d8cf;padding:14px 0;}",
+    "@media (prefers-color-scheme:dark){body{background:#121417;color:#e8edf2}.meta{color:#aab6c2}.page,header,.book-list li{border-color:#30363d}a{color:#6cb6ff}}",
+    "</style>",
+    "</head>",
+    "<body>"
+  ].join("\n");
+}
+
+function bookTextHtmlDocument(id: string, book: Book | undefined, scan: ScanData): string {
+  const title = bookTitleForText(book, id);
+  const pages = scan.pages || [];
+  const sourceJson = `/reylai_assets/scans/${encodeURIComponent(id)}.json`;
+  const pdfUrl = firstValidUrl(book?.pdf_url, book?.source_url, book?.remote_url);
+  const sections: string[] = [];
+  for (const page of pages) {
+    const pageNo = Number(page.page || 0);
+    const pageText = cleanPageText(page);
+    if (!pageNo || !pageText) continue;
+    sections.push([
+      `<section class="page" id="page-${pageNo}" data-page="${pageNo}">`,
+      `<h2>Sayfa ${pageNo}</h2>`,
+      `<p>${escapeHtml(pageText)}</p>`,
+      "</section>"
+    ].join("\n"));
+  }
+
+  const meta = [
+    `<span>book_id: ${escapeHtml(id)}</span>`,
+    `<span>pages: ${scan.total_pages || pages.length}</span>`,
+    `<span>extractor: ${escapeHtml(publicScanExtractor(scan.extractor || "") || "unknown")}</span>`,
+    `<a href="${sourceJson}">source json</a>`,
+    pdfUrl ? `<a href="${escapeHtml(pdfUrl)}">source pdf</a>` : ""
+  ].filter(Boolean).join("\n");
+
+  return [
+    bookTextHtmlHead(title, `${title} text extraction.`),
+    "<main>",
+    "<header>",
+    `<h1>${escapeHtml(title)}</h1>`,
+    `<div class="meta">${meta}</div>`,
+    "</header>",
+    sections.join("\n"),
+    "</main>",
+    "</body>",
+    "</html>"
+  ].join("\n");
+}
+
 async function staticExists(env: Env, path: string): Promise<boolean> {
   const response = await fetch(staticUrl(env, path), {
     method: "HEAD",
@@ -3865,24 +4035,73 @@ function retryDelay(baseDelay: number): number {
   return baseDelay + Math.floor(Math.random() * 220);
 }
 
+function configuredPositiveInt(value: string | undefined, fallback: number, min: number, max: number): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  const rounded = Math.floor(parsed);
+  if (rounded < min) return min;
+  if (rounded > max) return max;
+  return rounded;
+}
+
+function providerFetch(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
+  return fetch(url, {
+    ...init,
+    signal: AbortSignal.timeout(timeoutMs)
+  });
+}
+
 function geminiErrorStatus(error: unknown): number {
   const message = error instanceof Error ? error.message : String(error);
   const match = message.match(/\((\d{3})\)/);
   return match ? Number(match[1]) : 0;
 }
 
+function aiProviderLabel(provider: AiProvider): string {
+  return provider === "mistral" ? "Mistral" : "Gemini";
+}
+
+function isRateLimitError(error: unknown): boolean {
+  const status = geminiErrorStatus(error);
+  const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
+  return status === 429 || message.includes("quota") || message.includes("rate limit") || message.includes("resource_exhausted") || message.includes("too many requests");
+}
+
+async function generateAiContent(
+  env: Env,
+  messages: GeminiMessage[],
+  options: AiGenerateOptions = {}
+): Promise<AiCompletion> {
+  if (!env.GEMINI_API_KEY) return mistralGenerateContent(env, messages, options);
+  try {
+    const geminiResponse = await geminiGenerateContent(env, messages, options);
+    return {
+      provider: "gemini",
+      model: geminiResponse.model,
+      raw: geminiResponse.payload,
+      text: geminiResponseText(geminiResponse.payload)
+    };
+  } catch (error) {
+    if (isRateLimitError(error) && env.MISTRAL_API_KEY) {
+      return mistralGenerateContent(env, messages, options);
+    }
+    throw error;
+  }
+}
+
 async function geminiGenerateContent(
   env: Env,
   messages: GeminiMessage[],
-  options: { temperature?: number; maxTokens?: number } = {}
-): Promise<unknown> {
+  options: AiGenerateOptions = {}
+): Promise<{ model: string; payload: unknown }> {
   let lastError: unknown = null;
   for (const [modelIndex, model] of geminiModelList(env).entries()) {
     const delays = modelIndex === 0 ? GEMINI_PRIMARY_RETRY_DELAYS_MS : GEMINI_FALLBACK_RETRY_DELAYS_MS;
     for (const delay of delays) {
       if (delay) await sleep(retryDelay(delay));
       try {
-        return await geminiGenerateContentOnce(env, messages, { ...options, model });
+        const payload = await geminiGenerateContentOnce(env, messages, { ...options, model });
+        return { model, payload };
       } catch (error) {
         lastError = error;
         if (!geminiStatusIsRetryable(geminiErrorStatus(error))) throw error;
@@ -3892,29 +4111,91 @@ async function geminiGenerateContent(
   throw lastError || new Error("Gemini API yaniti alinamadi.");
 }
 
+function mistralMessagesFromMessages(messages: GeminiMessage[]): Array<{ role: "system" | "user" | "assistant"; content: string }> {
+  const output: Array<{ role: "system" | "user" | "assistant"; content: string }> = [];
+  for (const message of messages) {
+    const content = String(message.content || "").trim();
+    if (content) output.push({ role: message.role, content });
+  }
+  return output.length ? output : [{ role: "user", content: "" }];
+}
+
+async function mistralGenerateContent(
+  env: Env,
+  messages: GeminiMessage[],
+  options: AiGenerateOptions = {}
+): Promise<AiCompletion> {
+  if (!env.MISTRAL_API_KEY) throw new Error("MISTRAL_API_KEY yapilandirilmamis.");
+  let lastError: unknown = null;
+  const model = env.MISTRAL_MODEL || MISTRAL_DEFAULT_MODEL;
+  for (const delay of MISTRAL_RETRY_DELAYS_MS) {
+    if (delay) await sleep(retryDelay(delay));
+    try {
+      const raw = await mistralGenerateContentOnce(env, messages, { ...options, model });
+      return {
+        provider: "mistral",
+        model,
+        raw,
+        text: mistralResponseText(raw)
+      };
+    } catch (error) {
+      lastError = error;
+      if (!geminiStatusIsRetryable(geminiErrorStatus(error))) throw error;
+    }
+  }
+  throw lastError || new Error("Mistral API yaniti alinamadi.");
+}
+
+async function mistralGenerateContentOnce(
+  env: Env,
+  messages: GeminiMessage[],
+  options: AiGenerateOptions & { model?: string } = {}
+): Promise<unknown> {
+  const payload: Record<string, unknown> = {
+    model: options.model || env.MISTRAL_MODEL || MISTRAL_DEFAULT_MODEL,
+    messages: mistralMessagesFromMessages(messages),
+    temperature: options.temperature ?? 0.2
+  };
+
+  const response = await providerFetch(env.MISTRAL_API_URL || MISTRAL_DEFAULT_API_URL, {
+    method: "POST",
+    headers: {
+      "authorization": `Bearer ${env.MISTRAL_API_KEY}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  }, options.timeoutMs || AI_DEFAULT_FETCH_TIMEOUT_MS);
+
+  if (!response.ok) {
+    const snippet = await readTextSnippet(response, 500);
+    throw new Error(`Mistral API hatasi (${response.status}): ${snippet || response.statusText}`);
+  }
+
+  return await response.json();
+}
+
 async function geminiGenerateContentOnce(
   env: Env,
   messages: GeminiMessage[],
-  options: { temperature?: number; maxTokens?: number; model?: string } = {}
+  options: AiGenerateOptions & { model?: string } = {}
 ): Promise<unknown> {
   const generationConfig: Record<string, unknown> = {
     temperature: options.temperature ?? 0.2
   };
-  if (options.maxTokens) generationConfig.maxOutputTokens = options.maxTokens;
 
   const payload = geminiPayloadFromMessages(messages);
   payload.generationConfig = generationConfig;
 
   const baseUrl = (env.GEMINI_API_URL || "https://generativelanguage.googleapis.com/v1beta/models").replace(/\/+$/, "");
   const model = options.model || env.GEMINI_MODEL || GEMINI_DEFAULT_MODEL;
-  const response = await fetch(`${baseUrl}/${encodeURIComponent(model)}:generateContent`, {
+  const response = await providerFetch(`${baseUrl}/${encodeURIComponent(model)}:generateContent`, {
     method: "POST",
     headers: {
       "x-goog-api-key": env.GEMINI_API_KEY,
       "content-type": "application/json"
     },
     body: JSON.stringify(payload)
-  });
+  }, options.timeoutMs || AI_DEFAULT_FETCH_TIMEOUT_MS);
 
   if (!response.ok) {
     const snippet = await readTextSnippet(response, 500);
@@ -3931,6 +4212,22 @@ function geminiResponseText(payload: unknown): string {
   return content.parts.map((part) => isRecord(part) && typeof part.text === "string" ? part.text : "").join("").trim();
 }
 
+function mistralResponseText(payload: unknown): string {
+  if (!isRecord(payload) || !Array.isArray(payload.choices) || !isRecord(payload.choices[0])) return "";
+  const message = payload.choices[0].message;
+  if (!isRecord(message)) return "";
+  const content = message.content;
+  if (typeof content === "string") return content.trim();
+  if (!Array.isArray(content)) return "";
+  return content.map((part) => {
+    if (typeof part === "string") return part;
+    if (!isRecord(part)) return "";
+    if (typeof part.text === "string") return part.text;
+    if (typeof part.content === "string") return part.content;
+    return "";
+  }).join("").trim();
+}
+
 async function generateChatTitle(env: Env, bookName: string, prompt: string, answer: string): Promise<string> {
   const fallback = fallbackChatTitle(prompt);
   try {
@@ -3943,11 +4240,10 @@ async function generateChatTitle(env: Env, bookName: string, prompt: string, ans
       `Kullanıcı sorusu: ${prompt}`,
       `Cevap özeti: ${answer.slice(0, 700)}`
     ].join("\n");
-    const response = await geminiGenerateContent(env, [{ role: "user", content: titlePrompt }], {
-      maxTokens: 32,
+    const response = await generateAiContent(env, [{ role: "user", content: titlePrompt }], {
       temperature: 0.1
     });
-    return cleanChatTitle(geminiResponseText(response)) || fallback;
+    return cleanChatTitle(response.text) || fallback;
   } catch {
     return fallback;
   }
@@ -4236,6 +4532,13 @@ function text(data: string, status = 200): Response {
   return new Response(data, {
     status,
     headers: TEXT_HEADERS
+  });
+}
+
+function html(data: string, status = 200): Response {
+  return new Response(data, {
+    status,
+    headers: HTML_HEADERS
   });
 }
 

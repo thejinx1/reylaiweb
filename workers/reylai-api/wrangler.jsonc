@@ -18,6 +18,9 @@
     "GEMINI_API_URL": "https://generativelanguage.googleapis.com/v1beta/models",
     "GEMINI_MODEL": "gemini-3.5-flash",
     "GEMINI_FALLBACK_MODELS": "gemini-flash-latest,gemini-2.5-flash",
+    "MISTRAL_API_URL": "https://api.mistral.ai/v1/chat/completions",
+    "MISTRAL_MODEL": "mistral-large-latest",
+    "AI_FETCH_TIMEOUT_MS": "25000",
     "TURNSTILE_SITE_KEY": "0x4AAAAAADf7TXMs0rMZvUad",
     "AUTH_REQUIRE_TURNSTILE": "true"
   },
@@ -36,7 +39,7 @@
     }
   ],
   "secrets": {
-    "required": ["GEMINI_API_KEY", "GAS_WEB_APP_URL", "TURNSTILE_SECRET_KEY"]
+    "required": ["GEMINI_API_KEY", "MISTRAL_API_KEY", "GAS_WEB_APP_URL", "TURNSTILE_SECRET_KEY"]
   },
   "observability": {
     "enabled": true,

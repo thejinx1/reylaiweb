@@ -30,15 +30,7 @@
     if (forced === '1') localStorage.setItem('reylai.perfLite', '1');
     if (forced === '0') localStorage.setItem('reylai.perfLite', '0');
     var pref = localStorage.getItem('reylai.perfLite');
-    var nav = navigator || {};
-    var conn = nav.connection || nav.mozConnection || nav.webkitConnection || null;
-    var memory = Number(nav.deviceMemory || 0);
-    var cores = Number(nav.hardwareConcurrency || 0);
-    var coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-    var narrow = window.matchMedia && window.matchMedia('(max-width: 760px)').matches;
-    var slowNetwork = !!(conn && (/2g|3g/.test(String(conn.effectiveType || '')) || conn.saveData));
-    var lowHardware = (memory && memory <= 4) || (cores && cores <= 4);
-    var lite = pref === '1' || (pref !== '0' && (slowNetwork || lowHardware || (coarse && narrow)));
+    var lite = pref !== '0';
     if (lite) document.documentElement.classList.add('perf-lite');
   } catch(e) {}
 })();
@@ -10618,6 +10610,8 @@ async function activateAppRoute(route, options) {
 
   if (route === 'message') openDmOverlay({ routeOpen: true });
   else closeDmOverlay({ preserveRoute: true });
+
+  if (route === 'library') showLibraryAiModelNotice();
 }
 
 function openAuthForRoute(mode, targetPath) {
@@ -10651,6 +10645,15 @@ function updateHomeAuthUI() {
   if (homeChip) homeChip.classList.toggle('visible', !!user);
   if (homeName) homeName.textContent = user ? (user.display_name || user.email || 'Hesap') : 'Hesap';
   setAccountAvatarElement(homeAvatar, user || {});
+}
+
+function showLibraryAiModelNotice() {
+  showToast(
+    'warning',
+    'AI modelleri geliştiriliyor',
+    'Uygulamadaki AI modelleri henüz tam olarak optimize edilmedi; yanıt kalitesi ve hız zamanla geliştirilecek.',
+    8200
+  );
 }
 
 function getAppAuthToken() {

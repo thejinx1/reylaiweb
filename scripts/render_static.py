@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import app
+from render_scan_html import render_scan_html
 
 
 def main():
@@ -57,6 +58,7 @@ def main():
         source = ROOT / "static" / "pdfjs" / filename
         if source.exists():
             shutil.copy2(source, pdfjs_dest / filename)
+    render_scan_html(ROOT)
 
 
 if __name__ == "__main__":
