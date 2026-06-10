@@ -2278,6 +2278,128 @@ body.route-home .account-menu-presence-popover {
   padding: clamp(22px, 4vw, 32px);
 }
 
+.home-team-card {
+  display: grid;
+  gap: clamp(24px, 4vw, 34px);
+  padding: clamp(8px, 2vw, 16px) 0;
+}
+
+.home-team-copy {
+  display: grid;
+  gap: 0;
+}
+
+.home-team-copy .home-section-title {
+  max-width: 780px;
+  font-size: clamp(30px, 4.6vw, 44px);
+}
+
+.home-team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 420px));
+  gap: clamp(16px, 2.8vw, 28px);
+}
+
+.home-team-founder {
+  min-height: 270px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 14px;
+  padding: clamp(34px, 5vw, 48px) clamp(22px, 4vw, 34px);
+  text-align: center;
+  border: 1px solid rgba(147,197,253,0.14);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 50% 110%, rgba(96,165,250,0.13), transparent 42%),
+    linear-gradient(145deg, rgba(18,22,38,0.78), rgba(8,12,24,0.82));
+  box-shadow: inset 0 1px rgba(255,255,255,0.06);
+}
+
+.home-founder-avatar-frame {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  border-radius: 999px;
+  padding: 3px;
+  border: 1px solid rgba(147,197,253,0.22);
+  background: linear-gradient(145deg, rgba(96,165,250,0.28), rgba(20,184,166,0.16));
+  box-shadow: 0 20px 54px rgba(0,0,0,0.34);
+}
+
+.home-founder-avatar {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  border-radius: 999px;
+  background: #0f172a;
+}
+
+.home-founder-decoration {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: 50%;
+  width: 146%;
+  height: 146%;
+  object-fit: contain;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.home-founder-decoration[hidden] {
+  display: none;
+}
+
+.home-founder-copy {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+}
+
+.home-founder-role {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  justify-content: center;
+  min-height: 26px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(250,204,21,0.84);
+  background: rgba(250,204,21,0.08);
+  color: #facc15;
+  font-size: 12px;
+  font-weight: 950;
+  letter-spacing: 0;
+}
+
+.home-founder-name {
+  margin: 4px 0 0;
+  color: var(--text-primary);
+  font-size: 24px;
+  line-height: 1.1;
+  font-weight: 950;
+  overflow-wrap: anywhere;
+}
+
+.home-founder-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(203,213,225,0.58);
+  font-size: 15px;
+  font-weight: 800;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.home-founder-handle:hover {
+  color: #bfdbfe;
+}
+
 .home-footer {
   margin: 0;
 }
@@ -4881,6 +5003,14 @@ body.account-menu-open .account-menu {
     grid-template-columns: 1fr;
   }
 
+  .home-team-card {
+    grid-template-columns: 1fr;
+  }
+
+  .home-team-founder {
+    justify-self: stretch;
+  }
+
   .footer-main {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -4908,6 +5038,15 @@ body.account-menu-open .account-menu {
   .home-feature-grid,
   .contact-grid {
     grid-template-columns: 1fr;
+  }
+
+  .home-team-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .home-founder-avatar-frame {
+    width: 88px;
+    height: 88px;
   }
 
   .home-info-row {
@@ -10726,6 +10865,7 @@ html.perf-lite .loading-orbit::after {
 
 html.perf-lite .navbar,
 html.perf-lite .home-nav,
+html.perf-lite .home-team-card,
 html.perf-lite .grade-strip,
 html.perf-lite .book-grid-wrap,
 html.perf-lite .lib-footer,
@@ -10773,6 +10913,7 @@ html.perf-lite .bottom-grade-cluster:hover,
 html.perf-lite .home-cta:hover,
 html.perf-lite .home-auth-btn:hover,
 html.perf-lite .home-account-chip:hover,
+html.perf-lite .home-founder-handle:hover,
 html.perf-lite .account-submit:hover,
 html.perf-lite .dm-send-btn:hover,
 html.perf-lite .message-action-btn:hover,
@@ -11222,6 +11363,25 @@ body::after,
         </article>
       </section>
 
+      <section class="home-team-card" aria-labelledby="homeTeamTitle">
+        <div class="home-team-copy">
+          <h2 class="home-section-title" id="homeTeamTitle">Ekibin arkasındaki kişilerle tanış</h2>
+        </div>
+        <div class="home-team-grid">
+          <article class="home-team-founder" aria-label="Founder Discord profili">
+            <span class="home-founder-avatar-frame">
+              <img class="home-founder-avatar" id="founderDiscordAvatar" src="{{ reylai_icon_src }}" width="96" height="96" alt="Founder Discord avatarı" loading="lazy" decoding="async">
+              <img class="home-founder-decoration" id="founderDiscordDecoration" width="142" height="142" alt="" hidden loading="lazy" decoding="async">
+            </span>
+            <div class="home-founder-copy">
+              <h3 class="home-founder-name" id="founderDiscordName">reyliar</h3>
+              <a class="home-founder-handle" id="founderDiscordHandle" href="https://discord.com/users/1421177012814614548" target="_blank" rel="noopener noreferrer">@reyliar</a>
+              <div class="home-founder-role">Founder</div>
+            </div>
+          </article>
+        </div>
+      </section>
+
       <section class="home-info-card">
         <div>
           <div class="home-section-kicker">Kısaca</div>
@@ -11230,7 +11390,7 @@ body::after,
         <p class="home-section-text">ReylAI; kitap seçimi, sayfa içerikleri, AI sohbeti, kayıtlı konuşmalar ve hesap tabanlı mesajlaşmayı tek bir çalışma alanında toplar. AI özellikleri için hesap ve e-posta doğrulaması gerekir.</p>
         <div class="home-info-list">
           <div class="home-info-row"><div class="home-info-label">Hesap</div><div class="home-info-value">Oturum, profil fotoğrafı, durum bilgisi ve e-posta doğrulaması hesap üzerinden yönetilir.</div></div>
-          <div class="home-info-row"><div class="home-info-label">Güvenlik</div><div class="home-info-value">Giriş ve hassas işlemlerde Cloudflare Turnstile doğrulaması kullanılır; şifreler düz metin olarak saklanmaz.</div></div>
+          <div class="home-info-row"><div class="home-info-label">Güvenlik</div><div class="home-info-value">Giriş ve hassas işlemlerde güvenlik doğrulaması kullanılır; şifreler düz metin olarak saklanmaz.</div></div>
           <div class="home-info-row"><div class="home-info-label">Yasal</div><div class="home-info-value">Kullanım şartları ve gizlilik politikası sayfalarında veri işleme ve iletişim bilgileri yer alır.</div></div>
         </div>
       </section>
@@ -11306,7 +11466,7 @@ body::after,
     <h1 class="auth-hero-title" id="accountAuthTitle">ReylAI'ye hoş geldin.</h1>
     <p class="auth-hero-text" id="accountAuthSubtitle">Kitapların, sohbet geçmişin ve çalışma alanın hesabına bağlı şekilde açılır.</p>
     <div class="auth-benefits" aria-label="Hesap özellikleri">
-      <div class="auth-benefit"><span class="auth-benefit-dot"></span><span>Cloudflare doğrulaması</span></div>
+      <div class="auth-benefit"><span class="auth-benefit-dot"></span><span>Güvenlik doğrulaması</span></div>
       <div class="auth-benefit"><span class="auth-benefit-dot"></span><span>Korunan şifreler</span></div>
       <div class="auth-benefit"><span class="auth-benefit-dot"></span><span>Cihazda oturum</span></div>
     </div>
@@ -11361,7 +11521,7 @@ body::after,
       </label>
       <div class="turnstile-wrap">
         <div id="accountTurnstile"></div>
-        <div class="turnstile-note" id="turnstileNote">Cloudflare doğrulaması hazırlanıyor...</div>
+        <div class="turnstile-note" id="turnstileNote">Güvenlik doğrulaması hazırlanıyor...</div>
       </div>
       <div class="account-auth-error" id="accountAuthError"></div>
       <div class="account-legal-note" id="accountLegalNote">
@@ -12057,7 +12217,7 @@ body::after,
       <input class="contact-honeypot" id="contactWebsite" name="website" type="text" tabindex="-1" autocomplete="off" aria-hidden="true">
       <div class="turnstile-wrap">
         <div id="contactTurnstile"></div>
-        <div class="turnstile-note" id="contactTurnstileNote">Cloudflare doğrulaması hazırlanıyor...</div>
+        <div class="turnstile-note" id="contactTurnstileNote">Güvenlik doğrulaması hazırlanıyor...</div>
       </div>
       <div class="contact-status" id="contactStatus"></div>
       <div class="contact-actions">
@@ -12124,11 +12284,11 @@ body::after,
     <div class="auth-lock-icon">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
     </div>
-    <div class="auth-title">Cloudflare Doğrulaması</div>
+    <div class="auth-title">Güvenlik Doğrulaması</div>
     <div class="auth-desc">Bu yönetici işlemi için bot doğrulamasını tamamla.</div>
     <div class="turnstile-wrap admin-turnstile-wrap">
       <div id="adminTurnstile"></div>
-      <div class="turnstile-note" id="adminTurnstileNote">Cloudflare doğrulaması hazırlanıyor...</div>
+      <div class="turnstile-note" id="adminTurnstileNote">Güvenlik doğrulaması hazırlanıyor...</div>
     </div>
     <div class="auth-error" id="authError"></div>
     <div class="auth-actions">
@@ -12191,8 +12351,10 @@ let _contactTurnstileReady = false;
 let _turnstileScriptPromise = null;
 let _appStarted = false;
 let _currentRoute = 'home';
+let _routeActivationSeq = 0;
 let _routeAfterAuth = '/library';
 let _pendingAiModelNotice = false;
+let _libraryAiModelNoticeShownForVisit = false;
 let _pendingDmRouteOptions = null;
 let _pendingProfileAvatarDataUrl = '';
 let _profileCropImage = null;
@@ -12217,6 +12379,7 @@ let _chatStoreLoaded = false;
 let _chatStoreLoadPromise = null;
 let _chatStoreSaveTimer = null;
 let _activeChatId = '';
+let _chatSidebarOpenSeq = 0;
 let _libraryBookCache = {};
 let _activeAnalyzeController = null;
 let _analysisStopRequested = false;
@@ -12236,6 +12399,9 @@ let _dmPanelLoadSeq = 0;
 let _dmMessagesUserId = '';
 let _dmMessageAbortController = null;
 const BOOKS_REMOTE_BASE_URL = {{ books_remote_base_url|tojson }};
+const DISCORD_CDN_BASE = 'https://cdn.discordapp.com';
+const FOUNDER_DISCORD_USER_ID = '1421177012814614548';
+const FOUNDER_DISCORD_ENDPOINT = 'https://reyliar.xyz/api/discord-user';
 
 const SEND_ICON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>';
 const STOP_ICON = '<svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2.5"/></svg>';
@@ -12342,11 +12508,14 @@ async function navigateApp(path, options) {
 
 async function activateAppRoute(route, options) {
   options = options || {};
+  const activationSeq = ++_routeActivationSeq;
+  const inLibraryArea = route === 'library' || route === 'chat';
   setRouteChrome(route);
   closeAccountMenu();
   if (route === 'home') {
     _routeAfterAuth = '/library';
     _pendingAiModelNotice = false;
+    _libraryAiModelNoticeShownForVisit = false;
     closeAiModelNotice();
     hideAccountAuth();
     closeChatSidebar({ preserveRoute: true });
@@ -12357,6 +12526,14 @@ async function activateAppRoute(route, options) {
   }
 
   _routeAfterAuth = routePath(route);
+  if (!inLibraryArea) {
+    _pendingAiModelNotice = false;
+    _libraryAiModelNoticeShownForVisit = false;
+    closeAiModelNotice();
+  } else if (route !== 'library') {
+    _pendingAiModelNotice = false;
+    closeAiModelNotice();
+  }
   if (!_accountUser) {
     closeChatSidebar({ preserveRoute: true });
     closeDmOverlay({ preserveRoute: true });
@@ -12368,6 +12545,7 @@ async function activateAppRoute(route, options) {
   hideAccountAuth();
   if (!_appStarted && !options.boot) showLoadingOverlay('Kişisel alan açılıyor...');
   await startApp();
+  if (activationSeq !== _routeActivationSeq || _currentRoute !== route) return;
   hideLoadingOverlay(true);
   maybePromptForSchool();
 
@@ -12380,6 +12558,7 @@ async function activateAppRoute(route, options) {
   if (route === 'library') showLibraryAiModelNotice();
   else {
     _pendingAiModelNotice = false;
+    if (route !== 'chat') _libraryAiModelNoticeShownForVisit = false;
     closeAiModelNotice();
   }
 }
@@ -12418,6 +12597,8 @@ function updateHomeAuthUI() {
 }
 
 function showLibraryAiModelNotice() {
+  if (_libraryAiModelNoticeShownForVisit) return;
+  _libraryAiModelNoticeShownForVisit = true;
   _pendingAiModelNotice = true;
   maybeShowPendingAiModelNotice();
 }
@@ -12436,6 +12617,87 @@ function maybeShowPendingAiModelNotice() {
 function closeAiModelNotice() {
   const overlay = document.getElementById('aiModelNoticeOverlay');
   if (overlay) overlay.classList.remove('active');
+}
+
+function discordCdnExt(hash) {
+  return String(hash || '').indexOf('a_') === 0 ? 'gif' : 'png';
+}
+
+function founderDiscordAvatarUrl(user, size) {
+  size = size || 256;
+  if (user && user.id && user.avatar) {
+    return DISCORD_CDN_BASE + '/avatars/' + encodeURIComponent(user.id) + '/' + encodeURIComponent(user.avatar) + '.' + discordCdnExt(user.avatar) + '?size=' + size;
+  }
+  return DISCORD_CDN_BASE + '/embed/avatars/0.png';
+}
+
+function founderDiscordDecorationUrl(user, size) {
+  size = size || 256;
+  const asset = user && user.avatar_decoration_data && user.avatar_decoration_data.asset;
+  if (!asset) return '';
+  return DISCORD_CDN_BASE + '/avatar-decoration-presets/' + encodeURIComponent(asset) + '.png?size=' + size + '&passthrough=true';
+}
+
+function founderDiscordName(user) {
+  return (user && (user.display_name || user.global_name || user.username)) || 'reyliar';
+}
+
+function founderPresenceStatus(presence) {
+  const raw = String((presence && (presence.discord_status || presence.status)) || 'offline').toLowerCase();
+  return ['online', 'idle', 'dnd', 'offline'].indexOf(raw) === -1 ? 'offline' : raw;
+}
+
+function founderPresenceText(presence) {
+  const status = founderPresenceStatus(presence);
+  const labels = {
+    online: 'Çevrimiçi',
+    idle: 'Boşta',
+    dnd: 'Rahatsız etmeyin',
+    offline: 'Çevrimdışı'
+  };
+  const activities = Array.isArray(presence && presence.activities) ? presence.activities : [];
+  const custom = activities.find(function(activity) { return activity && activity.type === 4 && activity.state; });
+  const active = activities.find(function(activity) { return activity && activity.type !== 4 && activity.name; });
+  const detail = custom ? custom.state : (active ? active.name : '');
+  return 'Discord: ' + (labels[status] || labels.offline) + (detail ? ' · ' + detail : '');
+}
+
+async function loadFounderDiscordProfile() {
+  const avatar = document.getElementById('founderDiscordAvatar');
+  const decoration = document.getElementById('founderDiscordDecoration');
+  const name = document.getElementById('founderDiscordName');
+  const handle = document.getElementById('founderDiscordHandle');
+  if (!avatar && !decoration && !name && !handle) return;
+  try {
+    const url = new URL(FOUNDER_DISCORD_ENDPOINT);
+    url.searchParams.set('userId', FOUNDER_DISCORD_USER_ID);
+    url.searchParams.set('fresh', String(Math.floor(Date.now() / 60000)));
+    const res = await fetch(url.toString(), { cache: 'no-store' });
+    const data = await res.json();
+    if (!res.ok || !data.success || !data.user) throw new Error(data.error || 'Discord profili alınamadı.');
+    const displayName = founderDiscordName(data.user);
+    if (avatar) {
+      avatar.src = founderDiscordAvatarUrl(data.user, 256);
+      avatar.alt = displayName + ' Discord avatarı';
+    }
+    if (decoration) {
+      const decorationUrl = founderDiscordDecorationUrl(data.user, 256);
+      decoration.hidden = !decorationUrl;
+      if (decorationUrl) decoration.src = decorationUrl;
+      else decoration.removeAttribute('src');
+    }
+    if (name) name.textContent = displayName;
+    if (handle) {
+      handle.textContent = '@' + (data.user.username || 'reyliar');
+      handle.href = 'https://discord.com/users/' + encodeURIComponent(data.user.id || FOUNDER_DISCORD_USER_ID);
+    }
+  } catch(e) {
+    if (decoration) {
+      decoration.hidden = true;
+      decoration.removeAttribute('src');
+    }
+    if (handle) handle.textContent = '@reyliar';
+  }
 }
 
 function getAppAuthToken() {
@@ -12606,15 +12868,15 @@ function renderAccountTurnstile() {
   if (!target) return;
   if (!_turnstileSiteKey) {
     _turnstileReady = false;
-    if (note) note.textContent = 'Cloudflare doğrulaması için production site key bekleniyor.';
+    if (note) note.textContent = 'Güvenlik doğrulaması yapılandırması bekleniyor.';
     updateAccountSubmitState();
     return;
   }
   if (!window.turnstile || typeof window.turnstile.render !== 'function') {
-    if (note) note.textContent = 'Cloudflare doğrulaması yükleniyor...';
+    if (note) note.textContent = 'Güvenlik doğrulaması yükleniyor...';
     loadTurnstileScript().then(renderAccountTurnstile).catch(function() {
       _turnstileReady = false;
-      if (note) note.textContent = 'Cloudflare doğrulaması yüklenemedi. Bağlantını kontrol et.';
+      if (note) note.textContent = 'Güvenlik doğrulaması yüklenemedi. Bağlantını kontrol et.';
       updateAccountSubmitState();
     });
     return;
@@ -12629,7 +12891,7 @@ function renderAccountTurnstile() {
     callback: function(token) {
       _turnstileToken = token || '';
       _turnstileReady = !!_turnstileToken;
-      if (note) note.textContent = _turnstileReady ? 'Cloudflare doğrulaması tamam.' : 'Cloudflare doğrulaması bekleniyor...';
+      if (note) note.textContent = _turnstileReady ? 'Güvenlik doğrulaması tamam.' : 'Güvenlik doğrulaması bekleniyor...';
       updateAccountSubmitState();
     },
     'expired-callback': function() {
@@ -12642,11 +12904,11 @@ function renderAccountTurnstile() {
     'error-callback': function() {
       _turnstileToken = '';
       _turnstileReady = false;
-      if (note) note.textContent = 'Cloudflare doğrulaması tekrar deneniyor...';
+      if (note) note.textContent = 'Güvenlik doğrulaması tekrar deneniyor...';
       updateAccountSubmitState();
     }
   });
-  if (note) note.textContent = 'Cloudflare doğrulaması bekleniyor...';
+  if (note) note.textContent = 'Güvenlik doğrulaması bekleniyor...';
   updateAccountSubmitState();
 }
 
@@ -12672,15 +12934,15 @@ function renderAdminTurnstile() {
   if (!target) return;
   if (!_turnstileSiteKey) {
     _adminTurnstileReady = false;
-    if (note) note.textContent = 'Cloudflare doğrulaması için production site key bekleniyor.';
+    if (note) note.textContent = 'Güvenlik doğrulaması yapılandırması bekleniyor.';
     updateAdminVerifyState();
     return;
   }
   if (!window.turnstile || typeof window.turnstile.render !== 'function') {
-    if (note) note.textContent = 'Cloudflare doğrulaması yükleniyor...';
+    if (note) note.textContent = 'Güvenlik doğrulaması yükleniyor...';
     loadTurnstileScript().then(renderAdminTurnstile).catch(function() {
       _adminTurnstileReady = false;
-      if (note) note.textContent = 'Cloudflare doğrulaması yüklenemedi. Bağlantını kontrol et.';
+      if (note) note.textContent = 'Güvenlik doğrulaması yüklenemedi. Bağlantını kontrol et.';
       updateAdminVerifyState();
     });
     return;
@@ -12695,7 +12957,7 @@ function renderAdminTurnstile() {
     callback: function(token) {
       _adminTurnstileToken = token || '';
       _adminTurnstileReady = !!_adminTurnstileToken;
-      if (note) note.textContent = _adminTurnstileReady ? 'Cloudflare doğrulaması tamam.' : 'Cloudflare doğrulaması bekleniyor...';
+      if (note) note.textContent = _adminTurnstileReady ? 'Güvenlik doğrulaması tamam.' : 'Güvenlik doğrulaması bekleniyor...';
       updateAdminVerifyState();
     },
     'expired-callback': function() {
@@ -12708,11 +12970,11 @@ function renderAdminTurnstile() {
     'error-callback': function() {
       _adminTurnstileToken = '';
       _adminTurnstileReady = false;
-      if (note) note.textContent = 'Cloudflare doğrulaması tekrar deneniyor...';
+      if (note) note.textContent = 'Güvenlik doğrulaması tekrar deneniyor...';
       updateAdminVerifyState();
     }
   });
-  if (note) note.textContent = 'Cloudflare doğrulaması bekleniyor...';
+  if (note) note.textContent = 'Güvenlik doğrulaması bekleniyor...';
   updateAdminVerifyState();
 }
 
@@ -12738,15 +13000,15 @@ function renderContactTurnstile() {
   if (!target) return;
   if (!_turnstileSiteKey) {
     _contactTurnstileReady = false;
-    if (note) note.textContent = 'Cloudflare doğrulaması için production site key bekleniyor.';
+    if (note) note.textContent = 'Güvenlik doğrulaması yapılandırması bekleniyor.';
     updateContactSubmitState();
     return;
   }
   if (!window.turnstile || typeof window.turnstile.render !== 'function') {
-    if (note) note.textContent = 'Cloudflare doğrulaması yükleniyor...';
+    if (note) note.textContent = 'Güvenlik doğrulaması yükleniyor...';
     loadTurnstileScript().then(renderContactTurnstile).catch(function() {
       _contactTurnstileReady = false;
-      if (note) note.textContent = 'Cloudflare doğrulaması yüklenemedi. Bağlantını kontrol et.';
+      if (note) note.textContent = 'Güvenlik doğrulaması yüklenemedi. Bağlantını kontrol et.';
       updateContactSubmitState();
     });
     return;
@@ -12761,7 +13023,7 @@ function renderContactTurnstile() {
     callback: function(token) {
       _contactTurnstileToken = token || '';
       _contactTurnstileReady = !!_contactTurnstileToken;
-      if (note) note.textContent = _contactTurnstileReady ? 'Cloudflare doğrulaması tamam.' : 'Cloudflare doğrulaması bekleniyor...';
+      if (note) note.textContent = _contactTurnstileReady ? 'Güvenlik doğrulaması tamam.' : 'Güvenlik doğrulaması bekleniyor...';
       updateContactSubmitState();
     },
     'expired-callback': function() {
@@ -12774,11 +13036,11 @@ function renderContactTurnstile() {
     'error-callback': function() {
       _contactTurnstileToken = '';
       _contactTurnstileReady = false;
-      if (note) note.textContent = 'Cloudflare doğrulaması tekrar deneniyor...';
+      if (note) note.textContent = 'Güvenlik doğrulaması tekrar deneniyor...';
       updateContactSubmitState();
     }
   });
-  if (note) note.textContent = 'Cloudflare doğrulaması bekleniyor...';
+  if (note) note.textContent = 'Güvenlik doğrulaması bekleniyor...';
   updateContactSubmitState();
 }
 
@@ -12844,7 +13106,7 @@ async function submitContactForm(event) {
   if (event) event.preventDefault();
   const btn = document.getElementById('contactSubmitBtn');
   if (!_contactTurnstileToken) {
-    setContactStatus('Cloudflare doğrulamasını tamamla.', 'error');
+    setContactStatus('Güvenlik doğrulamasını tamamla.', 'error');
     return;
   }
   const payload = {
@@ -12929,7 +13191,7 @@ function startForgotPassword() {
     return;
   }
   if (!_turnstileToken) {
-    setAccountAuthError('Şifre sıfırlamak için Cloudflare doğrulamasını tamamlayın.');
+    setAccountAuthError('Şifre sıfırlamak için güvenlik doğrulamasını tamamlayın.');
     return;
   }
   setAccountAuthError('');
@@ -12953,7 +13215,7 @@ async function submitAccountAuth(event) {
   if (event) event.preventDefault();
   const btn = document.getElementById('accountSubmitBtn');
   if (!_turnstileToken) {
-    setAccountAuthError('Cloudflare bot doğrulamasını tamamlayın.');
+    setAccountAuthError('Güvenlik doğrulamasını tamamlayın.');
     return;
   }
   const email = document.getElementById('accountEmail').value.trim();
@@ -15010,7 +15272,7 @@ async function submitAuth() {
       closeAuth();
       runAuthedCallback(cb);
     } else {
-      errEl.textContent = data.error || 'Cloudflare doğrulaması tamamlanamadı.';
+      errEl.textContent = data.error || 'Güvenlik doğrulaması tamamlanamadı.';
       resetAdminTurnstile();
     }
   } catch(e) {
@@ -16751,6 +17013,7 @@ function openChatSidebar(options) {
     navigateApp('/library/chat');
     return;
   }
+  if (!options.routeOpen) options.routeOpen = true;
   if (!_accountUser) {
     _routeAfterAuth = '/library/chat';
     showAccountAuth();
@@ -16758,10 +17021,13 @@ function openChatSidebar(options) {
   }
   const sidebar = document.getElementById('chatSidebar');
   if (!sidebar) return;
+  const openSeq = ++_chatSidebarOpenSeq;
   if (options.routeOpen) scrollToChatRouteAnchor(options);
   setChatRouteLock(true);
   renderChatHistory();
-  loadChatStoreFromServer().then(renderChatHistory);
+  loadChatStoreFromServer().then(function() {
+    if (openSeq === _chatSidebarOpenSeq) renderChatHistory();
+  }).catch(function() {});
   sidebar.classList.remove('collapsed');
   const backdrop = document.getElementById('chatHistoryBackdrop');
   if (backdrop) backdrop.classList.add('active');
@@ -16770,6 +17036,7 @@ function openChatSidebar(options) {
 
 function closeChatSidebar(options) {
   options = options || {};
+  _chatSidebarOpenSeq += 1;
   const sidebar = document.getElementById('chatSidebar');
   if (sidebar) sidebar.classList.add('collapsed');
   const backdrop = document.getElementById('chatHistoryBackdrop');
@@ -19166,6 +19433,7 @@ document.addEventListener('DOMContentLoaded', function() {
   mountAccountMenu();
   mountLibraryBottomMenu();
   updateHomeAuthUI();
+  loadFounderDiscordProfile();
   setupEmailCodeInputs();
   setupPasswordCodeInputs();
   const ta = document.getElementById('promptInput');
