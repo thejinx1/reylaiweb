@@ -10653,6 +10653,7 @@ let _dmPanelLoadSeq = 0;
 let _dmMessagesUserId = '';
 let _dmMessageAbortController = null;
 const BOOKS_REMOTE_BASE_URL = "https://thejinx1.github.io/blupblupreylai-books/";
+warmRemotePdfOrigin(BOOKS_REMOTE_BASE_URL);
 const DISCORD_CDN_BASE = 'https://cdn.discordapp.com';
 const FOUNDER_DISCORD_USER_ID = '1421177012814614548';
 const FOUNDER_DISCORD_ENDPOINT = 'https://reyliar.xyz/api/discord-user';
@@ -14653,8 +14654,122 @@ function _isPdfViewerActive() {
   var overlay = document.getElementById('pdfViewerOverlay');
   return !!(overlay && overlay.classList.contains('active'));
 }
-function prefetchPdfs(books) {
-  return;
+
+function _isUuidBookId(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(value || '').trim());
+}
+
+function _normalizePdfHttpUrl(url) {
+  url = String(url || '').trim();
+  if (!url) return '';
+  try {
+    var parsed = new URL(url, window.location.href);
+    var host = parsed.hostname.toLowerCase();
+    var parts = parsed.pathname.split('/').filter(Boolean);
+    if (host === 'github.com' && parts.length >= 5 && (parts[2] === 'blob' || parts[2] === 'raw')) {
+      return 'https://raw.githubusercontent.com/' + parts[0] + '/' + parts[1] + '/' + parts[3] + '/' + parts.slice(4).join('/') + parsed.search;
+    }
+    return parsed.href;
+  } catch(e) {
+    return url;
+  }
+}
+
+function _bookArchivePdfUrl(bookId) {
+  bookId = String(bookId || '').trim();
+  if (!BOOKS_REMOTE_BASE_URL || !_isUuidBookId(bookId)) return '';
+  return BOOKS_REMOTE_BASE_URL.replace(/\/?$/, '/') + encodeURIComponent(bookId + '.pdf');
+}
+
+function _isBookArchivePdfUrl(url) {
+  url = _normalizePdfHttpUrl(url);
+  if (!url || !BOOKS_REMOTE_BASE_URL) return false;
+  return url.indexOf(BOOKS_REMOTE_BASE_URL.replace(/\/?$/, '/')) === 0;
+}
+
+function _shouldUseBookArchiveUrl(book) {
+  book = book || {};
+  if (String(book.pdf_source || '').toLowerCase() === 'book_archive') return true;
+  if (_isBookArchivePdfUrl(book.pdf_url) || _isBookArchivePdfUrl(book.source_url) || _isBookArchivePdfUrl(book.remote_url)) return true;
+  return !String(book.local_path || '').trim() && !String(book.drive_id || '').trim();
+}
+
+function _isSaveDataMode() {
+  return !!(navigator.connection && navigator.connection.saveData);
+}
+
+function _remoteOriginForUrl(url) {
+  try {
+    return new URL(String(url || BOOKS_REMOTE_BASE_URL || ''), window.location.href).origin;
+  } catch(e) {
+    return '';
+  }
+}
+
+function _addResourceHint(rel, href, crossOrigin) {
+  if (!href || document.querySelector('link[data-reylai-pdf-hint="' + rel + '"][href="' + href + '"]')) return;
+  var link = document.createElement('link');
+  link.rel = rel;
+  link.href = href;
+  link.setAttribute('data-reylai-pdf-hint', rel);
+  if (crossOrigin) link.crossOrigin = 'anonymous';
+  document.head.appendChild(link);
+}
+
+function warmRemotePdfOrigin(url) {
+  var origin = _remoteOriginForUrl(url);
+  if (!origin) return;
+  _addResourceHint('dns-prefetch', origin, false);
+  _addResourceHint('preconnect', origin, true);
+}
+
+function _forgetPrefetchController(controller) {
+  _prefetchControllers = _prefetchControllers.filter(function(item) { return item !== controller; });
+}
+
+function _prefetchRemotePdfUrl(url) {
+  url = _normalizePdfHttpUrl(url);
+  if (!url || _prefetchCache[url]) return;
+  _prefetchCache[url] = true;
+  warmRemotePdfOrigin(url);
+  if (!window.fetch || _isSaveDataMode()) return;
+  var controller = new AbortController();
+  _prefetchControllers.push(controller);
+  fetch(url, {
+    method: 'HEAD',
+    mode: 'no-cors',
+    cache: 'force-cache',
+    credentials: 'omit',
+    signal: controller.signal
+  }).then(function() {
+    _forgetPrefetchController(controller);
+  }).catch(function() {
+    _forgetPrefetchController(controller);
+  });
+}
+
+function prefetchPdfForBook(book, immediate) {
+  prefetchPdfs([book], { immediate: !!immediate, limit: 1 });
+}
+
+function prefetchPdfs(books, options) {
+  options = options || {};
+  if (!Array.isArray(books) || !books.length || _isPdfViewerActive() || _isSaveDataMode()) return;
+  var token = _prefetchToken;
+  var urls = [];
+  books.forEach(function(book) {
+    var url = _remotePdfUrlForBook(book);
+    if (url && urls.indexOf(url) === -1) urls.push(url);
+  });
+  if (!urls.length) return;
+  var limit = Math.max(1, Math.min(options.limit || (isPerfLite() ? 2 : 4), urls.length));
+  var run = function() {
+    if (token !== _prefetchToken || _isPdfViewerActive()) return;
+    urls.slice(0, limit).forEach(_prefetchRemotePdfUrl);
+  };
+  if (options.immediate) run();
+  else if (window.requestIdleCallback) requestIdleCallback(run, { timeout: 1400 });
+  else setTimeout(run, 500);
 }
 function _abortPrefetches() {
   _prefetchToken++;
@@ -14663,7 +14778,18 @@ function _abortPrefetches() {
 }
 
 function prefetchAllGrades() {
-  return;
+  if (_isSaveDataMode()) return;
+  ['9', '10'].forEach(function(grade) {
+    if (grade === selectedGrade) return;
+    apiFetch('/api/library?grade=' + encodeURIComponent(grade), { cache: 'no-store' })
+      .then(function(res) { return res.ok ? res.json() : []; })
+      .then(function(books) {
+        if (!Array.isArray(books)) return;
+        registerLibraryBooks(books);
+        prefetchPdfs(books, { limit: 2 });
+      })
+      .catch(function() {});
+  });
 }
 
 var _filterBooksFrame = 0;
@@ -15313,6 +15439,7 @@ async function openAnalysis(book, preferredChatId) {
   resetEditState();
   selectedBook = book;
   registerLibraryBooks([book]);
+  prefetchPdfForBook(book, true);
   await loadChatStoreFromServer();
   closeChatSidebar();
   updateSelectedBookPanel(book);
@@ -15596,21 +15723,25 @@ window.addEventListener('resize', function() {
 });
 
 function _isValidPdfHttpUrl(url) {
-  url = String(url || '').trim();
-  return /^https?:\/\/.+\.pdf(?:[?#].*)?$/i.test(url);
+  url = _normalizePdfHttpUrl(url);
+  try {
+    var parsed = new URL(url, window.location.href);
+    return /^https?:$/.test(parsed.protocol) && /\.pdf$/i.test(parsed.pathname);
+  } catch(e) {
+    return false;
+  }
 }
 
 function _remotePdfUrlForBook(book) {
   book = book || {};
   var fields = ['pdf_url', 'source_url', 'remote_url'];
   for (var i = 0; i < fields.length; i++) {
-    var url = String(book[fields[i]] || '').trim();
+    var url = _normalizePdfHttpUrl(book[fields[i]]);
     if (_isValidPdfHttpUrl(url)) return url;
   }
   var bookId = String(book.book_id || '').trim();
-  if (book.pdf_source === 'book_archive' && BOOKS_REMOTE_BASE_URL && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(bookId)) {
-    return BOOKS_REMOTE_BASE_URL.replace(/\/?$/, '/') + encodeURIComponent(bookId + '.pdf');
-  }
+  var archiveUrl = _bookArchivePdfUrl(bookId);
+  if (archiveUrl && _shouldUseBookArchiveUrl(book)) return archiveUrl;
   return '';
 }
 
@@ -15677,9 +15808,12 @@ function openPdfViewer() {
   var frame = document.getElementById('pdfFrame');
   if (frame) {
     overlay.classList.add('iframe-mode');
+    warmRemotePdfOrigin(pdfUrl);
     loadLabel.textContent = 'PDF iframe içinde açılıyor...';
     loadPct.textContent = '';
     loadBytes.textContent = remotePdfUrl ? 'GitHub PDF kaynağı kullanılıyor.' : 'PDF kaynağı hazırlanıyor.';
+    frame.loading = 'eager';
+    frame.referrerPolicy = 'no-referrer';
     frame.onload = function() {
       if (overlay.classList.contains('active')) {
         loadOverlay.classList.add('hidden');
