@@ -43,7 +43,6 @@
     opacity: 0;
     animation: reylaiBootIn 0.46s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
-  html.perf-lite body { opacity: 1; animation: none; }
   @keyframes reylaiBootIn { to { opacity: 1; } }
 </style>
 <script>
@@ -8847,16 +8846,7 @@ body:not(.route-library) .library-bottom-menu {
   }
 }
 
-@media (max-width: 720px), (prefers-reduced-motion: reduce) {
-  body::after,
-  .account-auth-screen::after,
-  .nav-logo-shell::before,
-  .status-dot::after,
-  .analysis-status::before,
-  .empty-books-img {
-    animation: none !important;
-  }
-
+@media (max-width: 720px) {
   .screen,
   .navbar,
   .grade-strip,
@@ -8913,11 +8903,35 @@ body:not(.route-library) .library-bottom-menu {
 html.perf-lite *,
 html.perf-lite *::before,
 html.perf-lite *::after {
-  animation-duration: 0.001ms !important;
-  animation-iteration-count: 1 !important;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
   scroll-behavior: auto !important;
-  transition-duration: 0.001ms !important;
+}
+
+html.perf-lite .screen,
+html.perf-lite .navbar,
+html.perf-lite .grade-strip,
+html.perf-lite .book-grid-wrap,
+html.perf-lite .lib-footer,
+html.perf-lite .book-card.visible,
+html.perf-lite .chat-history-item,
+html.perf-lite .chat-msg,
+html.perf-lite .dm-chat,
+html.perf-lite .toast,
+html.perf-lite .library-bottom-menu,
+html.perf-lite .bottom-grade-btn.grade-btn.active {
+  animation-duration: 0.22s !important;
+  transition-duration: 0.18s !important;
+}
+
+html.perf-lite .loading-orbit::before,
+html.perf-lite .loading-logo,
+html.perf-lite .typing-spinner,
+html.perf-lite .task-spinner,
+html.perf-lite .scan-dot.spin,
+html.perf-lite .sync-btn.syncing .sync-icon,
+html.perf-lite .pdf-load-indeterminate .pdf-load-ring-fg,
+html.perf-lite .pdf-load-indeterminate .pdf-load-ring svg {
+  animation-play-state: running !important;
 }
 
 html.perf-lite body::before,
@@ -8930,9 +8944,13 @@ html.perf-lite .library-bottom-menu::before,
 html.perf-lite .library-bottom-menu::after,
 html.perf-lite .book-card::before,
 html.perf-lite .book-card::after,
-html.perf-lite .search-wrap::before,
-html.perf-lite .loading-orbit::after {
+html.perf-lite .search-wrap::before {
   display: none !important;
+}
+
+html.perf-lite .loading-orbit::after {
+  filter: none !important;
+  opacity: 0.34;
 }
 
 html.perf-lite .navbar,
