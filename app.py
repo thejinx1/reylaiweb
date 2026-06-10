@@ -9919,6 +9919,9 @@ body.analysis-mode .library-bottom-menu {
 }
 
 .library-bottom-menu[hidden],
+body:not(.app-ready) .library-bottom-menu,
+body.account-auth-visible .library-bottom-menu,
+body.analysis-mode .library-bottom-menu,
 body:not(.route-library) .library-bottom-menu {
   display: none !important;
   visibility: hidden !important;
