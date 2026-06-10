@@ -513,14 +513,6 @@ const USER_SELECT_COLUMNS = [
   "school_change_reviewed_at"
 ].join(", ");
 
-function schoolIconSelect(alias = ""): string {
-  const prefix = alias ? `${alias}.` : "";
-  return "(SELECT si.icon_data_url FROM school_icons si WHERE " +
-    `((si.school_id = ${prefix}school_id AND ${prefix}school_id IS NOT NULL AND ${prefix}school_id <> '') OR ` +
-    `(si.school_name = ${prefix}school_name AND si.school_province = ${prefix}school_province AND si.school_district = ${prefix}school_district)) ` +
-    `ORDER BY CASE WHEN si.school_id = ${prefix}school_id THEN 0 ELSE 1 END, si.updated_at DESC LIMIT 1) AS school_icon_data_url`;
-}
-
 export default {
   async fetch(request, env, ctx): Promise<Response> {
     try {
@@ -946,7 +938,7 @@ async function handleSignup(request: Request, env: Env): Promise<Response> {
   return json({
     success: true,
     token: session.token,
-    user: publicUser(user),
+    user: await publicUserWithSchoolIcon(env, user),
     verification_email_sent: delivery.sent,
     email_delivery_configured: delivery.configured,
     email_delivery_error: delivery.error,
@@ -976,7 +968,7 @@ async function handleLogin(request: Request, env: Env): Promise<Response> {
     .run();
   const freshUser = await getUserById(env, user.id) || user;
   const session = await createSession(request, env, freshUser, payload.remember_device !== false);
-  return json({ success: true, token: session.token, user: publicUser(freshUser) });
+  return json({ success: true, token: session.token, user: await publicUserWithSchoolIcon(env, freshUser) });
 }
 
 async function handleLogout(request: Request, env: Env): Promise<Response> {
@@ -1041,7 +1033,7 @@ async function handleProfileUpdate(request: Request, env: Env): Promise<Response
     }
 
     if (!updates.length) {
-      return json({ success: true, user: publicUser(user) });
+      return json({ success: true, user: await publicUserWithSchoolIcon(env, user) });
     }
 
     updates.push("updated_at = ?");
@@ -1063,7 +1055,7 @@ async function handleProfileUpdate(request: Request, env: Env): Promise<Response
       : null;
     return json({
       success: true,
-      user: freshUser ? publicUser(freshUser) : auth.user,
+      user: freshUser ? await publicUserWithSchoolIcon(env, freshUser) : auth.user,
       verification_email_sent: emailChangeDelivery?.sent || false,
       email_delivery_configured: emailChangeDelivery ? emailChangeDelivery.configured : undefined,
       email_delivery_error: emailChangeDelivery?.error,
@@ -1083,7 +1075,7 @@ async function handleProfileUpdate(request: Request, env: Env): Promise<Response
     .bind(displayName, now, authCtx.user.id)
     .run();
   const user = await getUserById(env, authCtx.user.id);
-  if (user !== null) return json({ success: true, user: publicUser(user as UserRow) });
+  if (user !== null) return json({ success: true, user: await publicUserWithSchoolIcon(env, user as UserRow) });
   return json({ success: true, user: { ...authCtx.user, display_name: displayName } });
 }
 
@@ -1105,11 +1097,11 @@ async function handleSchoolSelect(request: Request, env: Env): Promise<Response>
       "school_change_reviewed_by = NULL, school_change_reviewed_at = NULL, updated_at = ? WHERE id = ?"
     ).bind(...bindSchoolValues(school), now, now, user.id).run();
     const freshUser = await getUserById(env, user.id);
-    return json({ success: true, pending_review: false, user: freshUser ? publicUser(freshUser) : auth.user });
+    return json({ success: true, pending_review: false, user: freshUser ? await publicUserWithSchoolIcon(env, freshUser) : auth.user });
   }
 
   if (schoolsReferToSameSchool(publicSchoolFromRow(user), school)) {
-    return json({ success: true, pending_review: false, user: publicUser(user) });
+    return json({ success: true, pending_review: false, user: await publicUserWithSchoolIcon(env, user) });
   }
 
   await env.DB.prepare(
@@ -1120,7 +1112,7 @@ async function handleSchoolSelect(request: Request, env: Env): Promise<Response>
   return json({
     success: true,
     pending_review: true,
-    user: freshUser ? publicUser(freshUser) : auth.user,
+    user: freshUser ? await publicUserWithSchoolIcon(env, freshUser) : auth.user,
     message: "Okul değişikliği yönetici onayına gönderildi."
   });
 }
@@ -1272,7 +1264,7 @@ async function handlePresenceUpdate(request: Request, env: Env): Promise<Respons
   const user = await getUserById(env, auth.user.id);
   return json({
     success: true,
-    user: user ? publicUser(user) : { ...auth.user, presence_status: status, presence_updated_at: now }
+    user: user ? await publicUserWithSchoolIcon(env, user) : { ...auth.user, presence_status: status, presence_updated_at: now }
   });
 }
 
@@ -1282,7 +1274,7 @@ async function handleVerificationSend(request: Request, env: Env): Promise<Respo
   const user = await getUserById(env, auth.user.id);
   if (!user) return json({ success: false, error: "Hesap bulunamadı." }, 404);
   if (user.email_verified_at) {
-    return json({ success: true, already_verified: true, user: publicUser(user) });
+    return json({ success: true, already_verified: true, user: await publicUserWithSchoolIcon(env, user) });
   }
 
   const sentAt = user.email_verification_sent_at ? Date.parse(user.email_verification_sent_at) : 0;
@@ -1313,7 +1305,7 @@ async function handleVerificationConfirm(request: Request, env: Env): Promise<Re
 
   const user = await getUserById(env, auth.user.id);
   if (!user) return json({ success: false, error: "Hesap bulunamadı." }, 404);
-  if (user.email_verified_at) return json({ success: true, already_verified: true, user: publicUser(user) });
+  if (user.email_verified_at) return json({ success: true, already_verified: true, user: await publicUserWithSchoolIcon(env, user) });
   if (!user.email_verification_code_hash || !user.email_verification_expires_at) {
     return json({ success: false, error: "Önce yeni bir doğrulama kodu isteyin." }, 400);
   }
@@ -1331,7 +1323,7 @@ async function handleVerificationConfirm(request: Request, env: Env): Promise<Re
     "UPDATE users SET email_verified_at = ?, email_verification_code_hash = NULL, email_verification_expires_at = NULL, email_verification_sent_at = NULL, updated_at = ? WHERE id = ?"
   ).bind(now, now, user.id).run();
   const freshUser = await getUserById(env, user.id);
-  return json({ success: true, user: freshUser ? publicUser(freshUser) : auth.user });
+  return json({ success: true, user: freshUser ? await publicUserWithSchoolIcon(env, freshUser) : auth.user });
 }
 
 async function handleEmailChangeSend(request: Request, env: Env): Promise<Response> {
@@ -1399,7 +1391,7 @@ async function handleEmailChangeConfirm(request: Request, env: Env): Promise<Res
     "updated_at = ? WHERE id = ?"
   ).bind(pendingEmail, roleForEmail(pendingEmail), now, now, user.id).run();
   const freshUser = await getUserById(env, user.id);
-  return json({ success: true, user: freshUser ? publicUser(freshUser) : auth.user });
+  return json({ success: true, user: freshUser ? await publicUserWithSchoolIcon(env, freshUser) : auth.user });
 }
 
 async function handlePasswordChangeSend(request: Request, env: Env): Promise<Response> {
@@ -1491,7 +1483,7 @@ async function handlePasswordChangeComplete(request: Request, env: Env): Promise
     "password_change_token_hash = NULL, password_change_token_expires_at = NULL, password_change_sent_at = NULL, updated_at = ? WHERE id = ?"
   ).bind(await hashPassword(newPassword), now, now, user.id).run();
   const freshUser = await getUserById(env, user.id);
-  return json({ success: true, user: freshUser ? publicUser(freshUser) : auth.user });
+  return json({ success: true, user: freshUser ? await publicUserWithSchoolIcon(env, freshUser) : auth.user });
 }
 
 async function handlePasswordResetSend(request: Request, env: Env): Promise<Response> {
@@ -2044,13 +2036,14 @@ async function handleDmUsers(request: Request, env: Env): Promise<Response> {
   const rows = await env.DB.prepare(
     "SELECT u.id, u.email, u.display_name, u.role, u.avatar_data_url, u.email_verified_at, u.created_at, " +
     "u.school_id, u.school_name, u.school_province, u.school_province_code, u.school_district, u.school_district_code, " +
-    `u.school_type, u.school_website, u.school_selected_at, ${schoolIconSelect("u")}, u.presence_status, u.presence_updated_at, MAX(s.last_seen_at) AS last_seen_at ` +
+    "u.school_type, u.school_website, u.school_selected_at, u.presence_status, u.presence_updated_at, MAX(s.last_seen_at) AS last_seen_at " +
     "FROM users u LEFT JOIN sessions s ON s.user_id = u.id AND s.expires_at > ? " +
     "WHERE u.id <> ? AND u.school_id IS NOT NULL AND u.school_name IS NOT NULL " +
     "GROUP BY u.id ORDER BY lower(u.display_name), lower(u.email) LIMIT 1000"
   ).bind(now, auth.user.id).all<Record<string, unknown>>();
 
-  const users = (rows.results || []).filter((row) => schoolsReferToSameSchool(auth.user.school, row)).slice(0, 300).map(publicDmUser);
+  const matchingUsers = (rows.results || []).filter((row) => schoolsReferToSameSchool(auth.user.school, row)).slice(0, 300);
+  const users = await Promise.all(matchingUsers.map((row) => publicDmUserWithSchoolIcon(env, row)));
   return json({ success: true, users });
 }
 
@@ -2075,7 +2068,7 @@ async function handleDmThreads(request: Request, env: Env): Promise<Response> {
     const other = await env.DB.prepare(
       "SELECT u.id, u.email, u.display_name, u.role, u.avatar_data_url, u.email_verified_at, u.created_at, " +
       "u.school_id, u.school_name, u.school_province, u.school_province_code, u.school_district, u.school_district_code, " +
-      `u.school_type, u.school_website, u.school_selected_at, ${schoolIconSelect("u")}, u.presence_status, u.presence_updated_at, MAX(s.last_seen_at) AS last_seen_at ` +
+      "u.school_type, u.school_website, u.school_selected_at, u.presence_status, u.presence_updated_at, MAX(s.last_seen_at) AS last_seen_at " +
       "FROM users u LEFT JOIN sessions s ON s.user_id = u.id AND s.expires_at > ? " +
       "WHERE u.id = ? GROUP BY u.id"
     ).bind(now, otherId).first<Record<string, unknown>>();
@@ -2089,7 +2082,7 @@ async function handleDmThreads(request: Request, env: Env): Promise<Response> {
       "SELECT COUNT(*) AS count FROM dm_messages WHERE sender_id = ? AND recipient_id = ? AND read_at IS NULL AND deleted_at IS NULL"
     ).bind(otherId, userId).first<{ count: number }>();
     threads.push({
-      user: publicDmUser(other),
+      user: await publicDmUserWithSchoolIcon(env, other),
       latest_message: latest ? publicDmMessage(latest, userId) : null,
       unread_count: Number(unread?.count || 0),
       updated_at: latest?.created_at || row.last_at || ""
@@ -2123,7 +2116,7 @@ async function handleDmMessagesGet(request: Request, env: Env, url: URL): Promis
   ).bind(userId, otherId, otherId, userId, limit).all<DmMessageRow>();
 
   const messages = (rows.results || []).reverse().map((message) => publicDmMessage(message, userId));
-  return json({ success: true, user: publicDmUser(other), messages });
+  return json({ success: true, user: await publicDmUserWithSchoolIcon(env, other), messages });
 }
 
 async function handleDmMessageSend(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -2219,7 +2212,7 @@ async function requireAuth(request: Request, env: Env): Promise<AuthContext | Re
   const tokenHash = await sha256Base64Url(token);
   const now = new Date().toISOString();
   const row = await env.DB.prepare(
-    `SELECT ${USER_SELECT_COLUMNS.split(", ").map((column) => `u.${column}`).join(", ")}, ${schoolIconSelect("u")} ` +
+    `SELECT ${USER_SELECT_COLUMNS.split(", ").map((column) => `u.${column}`).join(", ")} ` +
     "FROM sessions s JOIN users u ON u.id = s.user_id " +
     "WHERE s.token_hash = ? AND s.expires_at > ?"
   ).bind(tokenHash, now).first<UserRow>();
@@ -2230,7 +2223,7 @@ async function requireAuth(request: Request, env: Env): Promise<AuthContext | Re
   }
 
   await env.DB.prepare("UPDATE sessions SET last_seen_at = ? WHERE token_hash = ?").bind(now, tokenHash).run();
-  return { user: publicUser(row), tokenHash };
+  return { user: await publicUserWithSchoolIcon(env, row), tokenHash };
 }
 
 async function createSession(
@@ -2303,13 +2296,13 @@ async function verifyTurnstile(request: Request, env: Env, tokenValue: unknown):
 
 async function getUserByEmail(env: Env, email: string): Promise<UserRow | null> {
   return await env.DB.prepare(
-    `SELECT ${USER_SELECT_COLUMNS.split(", ").map((column) => `u.${column}`).join(", ")}, ${schoolIconSelect("u")} FROM users u WHERE u.email = ?`
+    `SELECT ${USER_SELECT_COLUMNS} FROM users WHERE email = ?`
   ).bind(email).first<UserRow>();
 }
 
 async function getUserById(env: Env, id: string): Promise<UserRow | null> {
   return await env.DB.prepare(
-    `SELECT ${USER_SELECT_COLUMNS.split(", ").map((column) => `u.${column}`).join(", ")}, ${schoolIconSelect("u")} FROM users u WHERE u.id = ?`
+    `SELECT ${USER_SELECT_COLUMNS} FROM users WHERE id = ?`
   ).bind(id).first<UserRow>();
 }
 
@@ -2334,12 +2327,44 @@ function publicUser(user: UserRow): PublicUser {
   };
 }
 
+async function publicUserWithSchoolIcon(env: Env, user: UserRow): Promise<PublicUser> {
+  const data = publicUser(user);
+  await attachPublicSchoolIcon(env, data.school);
+  return data;
+}
+
+async function attachPublicSchoolIcon(env: Env, school: PublicSchool | null): Promise<void> {
+  if (!school || !school.name || school.icon_data_url) return;
+  try {
+    const row = await env.DB.prepare(
+      "SELECT icon_data_url FROM school_icons WHERE " +
+      "((school_id = ? AND ? <> '') OR (school_name = ? AND school_province = ? AND school_district = ?)) " +
+      "ORDER BY CASE WHEN school_id = ? THEN 0 ELSE 1 END, updated_at DESC LIMIT 1"
+    ).bind(
+      school.id,
+      school.id,
+      school.name,
+      school.province,
+      school.district,
+      school.id
+    ).first<{ icon_data_url: string }>();
+    school.icon_data_url = row?.icon_data_url || "";
+  } catch (error) {
+    console.error(JSON.stringify({
+      level: "warn",
+      message: "school icon lookup skipped",
+      detail: error instanceof Error ? error.message : String(error)
+    }));
+    school.icon_data_url = "";
+  }
+}
+
 async function getDmUserById(env: Env, id: string): Promise<Record<string, unknown> | null> {
   const now = new Date().toISOString();
   return await env.DB.prepare(
     "SELECT u.id, u.email, u.display_name, u.role, u.avatar_data_url, u.email_verified_at, u.created_at, " +
     "u.school_id, u.school_name, u.school_province, u.school_province_code, u.school_district, u.school_district_code, " +
-    `u.school_type, u.school_website, u.school_selected_at, ${schoolIconSelect("u")}, u.presence_status, u.presence_updated_at, MAX(s.last_seen_at) AS last_seen_at ` +
+    "u.school_type, u.school_website, u.school_selected_at, u.presence_status, u.presence_updated_at, MAX(s.last_seen_at) AS last_seen_at " +
     "FROM users u LEFT JOIN sessions s ON s.user_id = u.id AND s.expires_at > ? " +
     "WHERE u.id = ? GROUP BY u.id"
   ).bind(now, id).first<Record<string, unknown>>();
@@ -2379,6 +2404,12 @@ function publicDmUser(user: Record<string, unknown>): Record<string, unknown> {
     effective_presence: effectivePresence,
     is_active: effectivePresence !== "offline"
   };
+}
+
+async function publicDmUserWithSchoolIcon(env: Env, user: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const data = publicDmUser(user);
+  await attachPublicSchoolIcon(env, data.school as PublicSchool | null);
+  return data;
 }
 
 function publicDmMessage(message: DmMessageRow, currentUserId: string): Record<string, unknown> {

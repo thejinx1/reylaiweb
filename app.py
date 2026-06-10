@@ -1781,7 +1781,6 @@ HTML = """
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Inter:wght@300;400;500;600;700;800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 <style>
 :root {
   --bg-deep:    #07070f;
@@ -10561,6 +10560,69 @@ body:not(.route-library) .library-bottom-menu {
   }
 }
 
+@media (max-width: 720px), (prefers-reduced-motion: reduce) {
+  body::after,
+  .account-auth-screen::after,
+  .nav-logo-shell::before,
+  .status-dot::after,
+  .analysis-status::before,
+  .empty-books-img {
+    animation: none !important;
+  }
+
+  .screen,
+  .navbar,
+  .grade-strip,
+  .book-grid-wrap,
+  .lib-footer,
+  .book-card.visible,
+  .chat-history-item,
+  .chat-msg,
+  .dm-chat,
+  .toast {
+    animation-duration: 0.16s !important;
+    transition-duration: 0.16s !important;
+  }
+
+  .auth-logo-box,
+  .auth-panel-card,
+  .account-menu,
+  .library-bottom-menu,
+  .bottom-grade-cluster,
+  .profile-settings-panel,
+  .admin-tools-panel,
+  .dm-panel,
+  .dm-thread,
+  .toast {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .auth-panel-card {
+    width: min(100%, calc(100vw - 24px));
+    max-height: calc(100dvh - 24px);
+    overscroll-behavior: contain;
+  }
+
+  .account-input-shell {
+    grid-template-columns: 22px minmax(0, 1fr);
+  }
+
+  .account-input-shell .account-input {
+    min-width: 0;
+    font-size: 16px;
+  }
+
+  .turnstile-wrap {
+    justify-items: center;
+    contain: layout paint;
+  }
+
+  .turnstile-wrap iframe {
+    max-width: 100%;
+  }
+}
+
 @media (max-width: 720px) {
   .dm-overlay {
     padding: 0;
@@ -11952,6 +12014,7 @@ let _adminTurnstileReady = false;
 let _contactTurnstileWidgetId = null;
 let _contactTurnstileToken = '';
 let _contactTurnstileReady = false;
+let _turnstileScriptPromise = null;
 let _appStarted = false;
 let _currentRoute = 'home';
 let _routeAfterAuth = '/library';
@@ -12244,7 +12307,6 @@ function showAccountAuth() {
   document.body.classList.remove('app-ready');
   if (screen) screen.classList.add('active');
   setAccountAuthMode(_accountAuthMode || 'login');
-  renderAccountTurnstile();
 }
 
 function hideAccountAuth() {
@@ -12306,6 +12368,33 @@ function updateAccountSubmitState() {
   btn.disabled = !_turnstileSiteKey || !_turnstileReady;
 }
 
+function loadTurnstileScript() {
+  if (window.turnstile && typeof window.turnstile.render === 'function') {
+    return Promise.resolve();
+  }
+  if (_turnstileScriptPromise) return _turnstileScriptPromise;
+  _turnstileScriptPromise = new Promise(function(resolve, reject) {
+    const existing = document.querySelector('script[data-turnstile-api="true"]');
+    if (existing) {
+      existing.addEventListener('load', resolve, { once: true });
+      existing.addEventListener('error', reject, { once: true });
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+    script.async = true;
+    script.defer = true;
+    script.dataset.turnstileApi = 'true';
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  }).catch(function(error) {
+    _turnstileScriptPromise = null;
+    throw error;
+  });
+  return _turnstileScriptPromise;
+}
+
 function renderAccountTurnstile() {
   const target = document.getElementById('accountTurnstile');
   const note = document.getElementById('turnstileNote');
@@ -12318,7 +12407,11 @@ function renderAccountTurnstile() {
   }
   if (!window.turnstile || typeof window.turnstile.render !== 'function') {
     if (note) note.textContent = 'Cloudflare doğrulaması yükleniyor...';
-    setTimeout(renderAccountTurnstile, 220);
+    loadTurnstileScript().then(renderAccountTurnstile).catch(function() {
+      _turnstileReady = false;
+      if (note) note.textContent = 'Cloudflare doğrulaması yüklenemedi. Bağlantını kontrol et.';
+      updateAccountSubmitState();
+    });
     return;
   }
   target.innerHTML = '';
@@ -12380,7 +12473,11 @@ function renderAdminTurnstile() {
   }
   if (!window.turnstile || typeof window.turnstile.render !== 'function') {
     if (note) note.textContent = 'Cloudflare doğrulaması yükleniyor...';
-    setTimeout(renderAdminTurnstile, 220);
+    loadTurnstileScript().then(renderAdminTurnstile).catch(function() {
+      _adminTurnstileReady = false;
+      if (note) note.textContent = 'Cloudflare doğrulaması yüklenemedi. Bağlantını kontrol et.';
+      updateAdminVerifyState();
+    });
     return;
   }
   target.innerHTML = '';
@@ -12442,7 +12539,11 @@ function renderContactTurnstile() {
   }
   if (!window.turnstile || typeof window.turnstile.render !== 'function') {
     if (note) note.textContent = 'Cloudflare doğrulaması yükleniyor...';
-    setTimeout(renderContactTurnstile, 220);
+    loadTurnstileScript().then(renderContactTurnstile).catch(function() {
+      _contactTurnstileReady = false;
+      if (note) note.textContent = 'Cloudflare doğrulaması yüklenemedi. Bağlantını kontrol et.';
+      updateContactSubmitState();
+    });
     return;
   }
   target.innerHTML = '';
@@ -12495,8 +12596,9 @@ async function loadAccountAuthConfig() {
   } catch(e) {
     _turnstileSiteKey = '';
   }
-  renderAccountTurnstile();
-  renderContactTurnstile();
+  if (document.body.classList.contains('account-auth-visible')) renderAccountTurnstile();
+  const contactOverlay = document.getElementById('contactOverlay');
+  if (contactOverlay && contactOverlay.classList.contains('active')) renderContactTurnstile();
 }
 
 function openContactForm() {
