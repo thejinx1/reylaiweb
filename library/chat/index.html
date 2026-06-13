@@ -48,6 +48,7 @@
 .ai-provider-selector {
   position: relative;
   margin-right: 4px;
+  z-index: 10;
 }
 .ai-provider-toggle {
   width: 38px;
@@ -94,7 +95,8 @@
   transform: translateY(6px) scale(0.96);
   pointer-events: none;
   transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.16,1,0.3,1);
-  z-index: 40;
+  z-index: 60;
+  overflow: visible;
 }
 .ai-provider-dropdown.open {
   opacity: 1;
@@ -4277,6 +4279,7 @@ body.chat-route-lock #libraryScreen {
   border-top: 1px solid var(--border);
   display: flex;
   gap: 12px;
+  overflow: visible;
   align-items: flex-end;
   flex-shrink: 0;
 }
@@ -10121,16 +10124,16 @@ body::after,
     <div class="chat-input-bar">
       <div class="ai-provider-selector" id="aiProviderSelector" aria-label="AI Sağlayıcı Seçimi">
         <button type="button" class="ai-provider-toggle" id="aiProviderToggle" onclick="toggleAiProviderMenu(event)" title="Model Seç" aria-expanded="false">
-          <img id="aiProviderToggleIcon" src="https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690b6.svg" alt="Gemini" width="22" height="22">
+          <img id="aiProviderToggleIcon" src="/static/model-gemini.svg" alt="Gemini" width="22" height="22">
         </button>
         <div class="ai-provider-dropdown" id="aiProviderDropdown">
           <button type="button" class="ai-provider-btn active" data-provider="auto" onclick="selectAiProvider('auto')" title="Gemini (Otomatik)">
-            <img src="https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690b6.svg" alt="Gemini" width="22" height="22">
+            <img src="/static/model-gemini.svg" alt="Gemini" width="22" height="22">
             <span class="ai-provider-name">Gemini</span>
             <svg class="ai-provider-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           </button>
           <button type="button" class="ai-provider-btn" data-provider="mistral" onclick="selectAiProvider('mistral')" title="Mistral (Açık Seçim)">
-            <img src="https://avatars.githubusercontent.com/u/132372032?s=200&v=4" alt="Mistral" width="22" height="22">
+            <img src="/static/model-mistral.svg" alt="Mistral" width="22" height="22">
             <span class="ai-provider-name">Mistral</span>
             <svg class="ai-provider-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           </button>
@@ -17771,8 +17774,8 @@ function prepareEditedPrompt(prompt) {
 
 // ── Analyze ────────────────────────────────────────────────────────────────────
 var _aiProviderIcons = {
-  auto: 'https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690b6.svg',
-  mistral: 'https://avatars.githubusercontent.com/u/132372032?s=200&v=4'
+  auto: '/static/model-gemini.svg',
+  mistral: '/static/model-mistral.svg'
 };
 
 function toggleAiProviderMenu(e) {
