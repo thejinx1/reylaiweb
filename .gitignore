@@ -12,3 +12,7 @@ node_modules/
 reylai_chat_history.json
 reylai_assets/page_images/
 *.log
+container-server/
+artifacts/
+test-results/
+
