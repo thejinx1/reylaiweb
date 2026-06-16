@@ -80,10 +80,12 @@
   object-fit: contain;
 }
 .ai-provider-dropdown {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 0;
+  position: fixed;
+  bottom: auto;
+  left: auto;
   min-width: 210px;
+  max-height: 60vh;
+  overflow-y: auto;
   background: rgba(13,13,28,0.97);
   border: 1px solid rgba(96,165,250,0.22);
   border-radius: 16px;
@@ -92,15 +94,12 @@
   backdrop-filter: blur(18px) saturate(1.3);
   -webkit-backdrop-filter: blur(18px) saturate(1.3);
   opacity: 0;
-  transform: translateY(6px) scale(0.96);
   pointer-events: none;
-  transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.16,1,0.3,1);
-  z-index: 60;
-  overflow: visible;
+  transition: opacity 0.15s ease;
+  z-index: 999999;
 }
 .ai-provider-dropdown.open {
   opacity: 1;
-  transform: translateY(0) scale(1);
   pointer-events: auto;
 }
 .ai-provider-btn {
@@ -7310,13 +7309,7 @@ select {
     rgba(255, 255, 255, 0.18);
   border: 1px solid rgba(32, 48, 74, 0.10);
   border-radius: 28px;
-  overflow: hidden;
-  backdrop-filter: blur(20px) saturate(1.25);
-  -webkit-backdrop-filter: blur(20px) saturate(1.25);
-}
-
-.analysis-status {
-  color: var(--green);
+    overflow: visible;
   background: rgba(29,78,216, 0.14);
   border-color: rgba(147,197,253, 0.22);
 }
@@ -7412,12 +7405,7 @@ select {
   border-top-color: rgba(32, 48, 74, 0.10);
   backdrop-filter: blur(28px) saturate(1.45);
   -webkit-backdrop-filter: blur(28px) saturate(1.45);
-  overflow: hidden;
-}
-
-.chat-input-wrap,
-#promptInput {
-  background: transparent;
+  overflow: visible;
 }
 
 .chat-input-wrap {
@@ -10124,16 +10112,16 @@ body::after,
     <div class="chat-input-bar">
       <div class="ai-provider-selector" id="aiProviderSelector" aria-label="AI Sağlayıcı Seçimi">
         <button type="button" class="ai-provider-toggle" id="aiProviderToggle" onclick="toggleAiProviderMenu(event)" title="Model Seç" aria-expanded="false">
-          <img id="aiProviderToggleIcon" src="/static/model-gemini.svg" alt="Gemini" width="22" height="22">
+          <img id="aiProviderToggleIcon" src="https://cdn.simpleicons.org/googlegemini/eee" alt="Gemini" width="22" height="22">
         </button>
         <div class="ai-provider-dropdown" id="aiProviderDropdown">
           <button type="button" class="ai-provider-btn active" data-provider="auto" onclick="selectAiProvider('auto')" title="Gemini (Otomatik)">
-            <img src="/static/model-gemini.svg" alt="Gemini" width="22" height="22">
+            <img src="https://cdn.simpleicons.org/googlegemini/eee" alt="Gemini" width="22" height="22">
             <span class="ai-provider-name">Gemini</span>
             <svg class="ai-provider-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           </button>
           <button type="button" class="ai-provider-btn" data-provider="mistral" onclick="selectAiProvider('mistral')" title="Mistral (Açık Seçim)">
-            <img src="/static/model-mistral.svg" alt="Mistral" width="22" height="22">
+            <img src="https://avatars.githubusercontent.com/u/132372032?s=48&v=4" alt="Mistral" width="22" height="22">
             <span class="ai-provider-name">Mistral</span>
             <svg class="ai-provider-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           </button>

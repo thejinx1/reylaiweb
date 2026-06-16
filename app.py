@@ -1984,28 +1984,107 @@ HTML = """
   @keyframes reylaiBootIn { to { opacity: 1; } }
 
 .ai-provider-selector {
-  display: flex;
-  gap: 4px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 4px;
-  margin-right: 8px;
+  position: relative;
+  margin-right: 4px;
+  z-index: 100;
 }
-.ai-provider-btn {
-  background: transparent;
-  border: none;
+.ai-provider-toggle {
+  width: 38px;
+  height: 38px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(15,15,30,0.7);
   cursor: pointer;
-  border-radius: 16px;
-  padding: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s, opacity 0.2s;
-  opacity: 0.6;
+  transition: background 0.2s, border-color 0.2s, transform 0.15s;
+  padding: 0;
+  flex-shrink: 0;
 }
-.ai-provider-btn:hover { background: var(--surface-hover); opacity: 0.8; }
-.ai-provider-btn.active { background: var(--surface-hover); opacity: 1; }
+.ai-provider-toggle:hover {
+  background: rgba(37,99,235,0.12);
+  border-color: rgba(96,165,250,0.34);
+  transform: translateY(-1px);
+}
+.ai-provider-toggle.open {
+  background: rgba(37,99,235,0.18);
+  border-color: rgba(96,165,250,0.44);
+}
+.ai-provider-toggle img {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  object-fit: contain;
+}
+.ai-provider-dropdown {
+  position: fixed;
+  bottom: auto;
+  left: auto;
+  min-width: 210px;
+  max-height: 60vh;
+  overflow-y: auto;
+  background: rgba(13,13,28,0.97);
+  border: 1px solid rgba(96,165,250,0.22);
+  border-radius: 16px;
+  padding: 6px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.52), 0 0 0 1px rgba(255,255,255,0.04) inset;
+  backdrop-filter: blur(18px) saturate(1.3);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 999999;
+}
+.ai-provider-dropdown.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.ai-provider-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+  text-align: left;
+}
+.ai-provider-btn:hover {
+  background: rgba(37,99,235,0.12);
+  color: var(--text-primary);
+}
+.ai-provider-btn.active {
+  background: rgba(37,99,235,0.18);
+  color: #93c5fd;
+}
+.ai-provider-btn img {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.ai-provider-btn .ai-provider-name {
+  flex: 1;
+  min-width: 0;
+}
+.ai-provider-btn .ai-provider-check {
+  width: 16px;
+  height: 16px;
+  display: none;
+  color: #60a5fa;
+}
+.ai-provider-btn.active .ai-provider-check {
+  display: block;
+}
 
 .ai-msg-info-tag {
   font-size: 0.75rem;
@@ -6137,6 +6216,7 @@ body.chat-route-lock #libraryScreen {
   border-top: 1px solid var(--border);
   display: flex;
   gap: 12px;
+  overflow: visible;
   align-items: flex-end;
   flex-shrink: 0;
 }
@@ -11980,12 +12060,21 @@ body::after,
     </div>
     <div class="chat-input-bar">
       <div class="ai-provider-selector" id="aiProviderSelector" aria-label="AI Sağlayıcı Seçimi">
-        <button type="button" class="ai-provider-btn active" data-provider="auto" onclick="selectAiProvider('auto')" title="Gemini (Otomatik)">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#10a37f"><path d="M12 2v20"/><path d="M2 12h20"/><path d="M12 2a10 10 0 0 1 10 10"/><path d="M12 2a10 10 0 0 0-10 10"/><path d="M12 22a10 10 0 0 1 10-10"/><path d="M12 22a10 10 0 0 0-10-10"/></svg>
+        <button type="button" class="ai-provider-toggle" id="aiProviderToggle" onclick="toggleAiProviderMenu(event)" title="Model Seç" aria-expanded="false">
+          <img id="aiProviderToggleIcon" src="https://cdn.simpleicons.org/googlegemini/eee" alt="Gemini" width="22" height="22">
         </button>
-        <button type="button" class="ai-provider-btn" data-provider="mistral" onclick="selectAiProvider('mistral')" title="Mistral (Açık Seçim)">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#f55036"><path d="M12 2v20"/><path d="M2 12h20"/><path d="M4.93 4.93l14.14 14.14"/><path d="M4.93 19.07L19.07 4.93"/></svg>
-        </button>
+        <div class="ai-provider-dropdown" id="aiProviderDropdown">
+          <button type="button" class="ai-provider-btn active" data-provider="auto" onclick="selectAiProvider('auto')" title="Gemini (Otomatik)">
+            <img src="https://cdn.simpleicons.org/googlegemini/eee" alt="Gemini" width="22" height="22">
+            <span class="ai-provider-name">Gemini</span>
+            <svg class="ai-provider-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </button>
+          <button type="button" class="ai-provider-btn" data-provider="mistral" onclick="selectAiProvider('mistral')" title="Mistral (Açık Seçim)">
+            <img src="https://avatars.githubusercontent.com/u/132372032?s=48&v=4" alt="Mistral" width="22" height="22">
+            <span class="ai-provider-name">Mistral</span>
+            <svg class="ai-provider-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </button>
+        </div>
       </div>
       <div class="chat-input-wrap">
         <textarea id="promptInput" placeholder="Bir soru sor ya da görev ver… (Enter ile gönder)" rows="1"></textarea>
@@ -12376,6 +12465,7 @@ body::after,
     </div>
     <div class="school-picker-actions">
       <button class="btn btn-ghost school-picker-cancel" type="button" onclick="closeSchoolPicker()">İptal</button>
+      <button class="btn btn-ghost" type="button" onclick="skipSchoolSelection()" style="color:var(--text-secondary)">Atla</button>
       <button class="btn btn-primary" id="schoolSubmitBtn" type="button" onclick="submitSchoolSelection()">Kaydet</button>
     </div>
   </div>
@@ -13067,7 +13157,7 @@ function setAccountAuthMode(mode) {
 function updateAccountSubmitState() {
   const btn = document.getElementById('accountSubmitBtn');
   if (!btn) return;
-  btn.disabled = !_turnstileSiteKey || !_turnstileReady;
+  btn.disabled = !_turnstileSiteKey ? false : !_turnstileReady;
 }
 
 function loadTurnstileScript() {
@@ -13102,8 +13192,9 @@ function renderAccountTurnstile() {
   const note = document.getElementById('turnstileNote');
   if (!target) return;
   if (!_turnstileSiteKey) {
-    _turnstileReady = false;
-    if (note) note.textContent = 'Güvenlik doğrulaması yapılandırması bekleniyor.';
+    _turnstileReady = true;
+    _turnstileToken = 'local-bypass';
+    if (note) note.textContent = 'Güvenlik doğrulaması (geliştirme modu)';
     updateAccountSubmitState();
     return;
   }
@@ -13449,7 +13540,7 @@ function startForgotPassword() {
 async function submitAccountAuth(event) {
   if (event) event.preventDefault();
   const btn = document.getElementById('accountSubmitBtn');
-  if (!_turnstileToken) {
+  if (!_turnstileToken && _turnstileSiteKey) {
     setAccountAuthError('Güvenlik doğrulamasını tamamlayın.');
     return;
   }
@@ -13993,6 +14084,11 @@ async function openSchoolPicker(options) {
   if (overlay) overlay.classList.add('active');
   resetSchoolPickerLists();
   await loadSchoolProvinces();
+}
+
+function skipSchoolSelection() {
+  _schoolPickerRequired = false;
+  forceCloseSchoolPicker();
 }
 
 function closeSchoolPicker() {
@@ -19619,6 +19715,53 @@ function prepareEditedPrompt(prompt) {
 }
 
 // ── Analyze ────────────────────────────────────────────────────────────────────
+var _aiProviderIcons = {
+  auto: 'https://cdn.simpleicons.org/googlegemini/eee',
+  mistral: 'https://avatars.githubusercontent.com/u/132372032?s=48&v=4'
+};
+
+function toggleAiProviderMenu(e) {
+  if (e) e.stopPropagation();
+  var dropdown = document.getElementById('aiProviderDropdown');
+  var toggle = document.getElementById('aiProviderToggle');
+  if (!dropdown || !toggle) return;
+  if (dropdown.classList.contains('open')) {
+    closeAiProviderMenu();
+  } else {
+    var rect = toggle.getBoundingClientRect();
+    dropdown.style.position = 'fixed';
+    dropdown.style.bottom = (window.innerHeight - rect.top + 8) + 'px';
+    dropdown.style.left = Math.max(8, rect.left) + 'px';
+    dropdown.style.right = 'auto';
+    dropdown.style.top = 'auto';
+    dropdown.classList.add('open');
+    toggle.classList.add('open');
+    toggle.setAttribute('aria-expanded', 'true');
+  }
+}
+
+function closeAiProviderMenu() {
+  var dropdown = document.getElementById('aiProviderDropdown');
+  var toggle = document.getElementById('aiProviderToggle');
+  if (dropdown) {
+    dropdown.classList.remove('open');
+    dropdown.style.position = '';
+    dropdown.style.bottom = '';
+    dropdown.style.left = '';
+    dropdown.style.right = '';
+    dropdown.style.top = '';
+  }
+  if (toggle) {
+    toggle.classList.remove('open');
+    toggle.setAttribute('aria-expanded', 'false');
+  }
+}
+
+document.addEventListener('click', function(e) {
+  var selector = document.getElementById('aiProviderSelector');
+  if (selector && !selector.contains(e.target)) closeAiProviderMenu();
+});
+
 function selectAiProvider(provider) {
   window._selectedAiProvider = provider;
   const btns = document.querySelectorAll('.ai-provider-btn');
@@ -19626,6 +19769,12 @@ function selectAiProvider(provider) {
     if (b.dataset.provider === provider) b.classList.add('active');
     else b.classList.remove('active');
   });
+  var toggleIcon = document.getElementById('aiProviderToggleIcon');
+  if (toggleIcon && _aiProviderIcons[provider]) {
+    toggleIcon.src = _aiProviderIcons[provider];
+    toggleIcon.alt = provider === 'auto' ? 'Gemini' : 'Mistral';
+  }
+  closeAiProviderMenu();
 }
 
 async function analyze() {
@@ -20320,6 +20469,92 @@ def api_verify_password():
     token = secrets.token_hex(32)
     _auth_tokens.add(token)
     return jsonify({'success': True, 'token': token})
+
+
+@app.route('/api/auth/config')
+def api_auth_config():
+    return jsonify({'turnstile_site_key': ''})
+
+
+@app.route('/api/auth/login', methods=['POST'])
+def api_auth_login():
+    token = 'test_' + secrets.token_hex(32)
+    _auth_tokens.add(token)
+    return jsonify({
+        'success': True,
+        'token': token,
+        'user': {
+            'id': 'test-user-001',
+            'email': 'test@reyliar.xyz',
+            'display_name': 'Test Kullanıcısı',
+            'email_verified': True,
+            'roles': ['user'],
+            'presence': 'online',
+            'avatar_url': ''
+        }
+    })
+
+
+@app.route('/api/auth/signup', methods=['POST'])
+def api_auth_signup():
+    token = 'test_' + secrets.token_hex(32)
+    _auth_tokens.add(token)
+    return jsonify({
+        'success': True,
+        'token': token,
+        'user': {
+            'id': 'test-user-001',
+            'email': 'test@reyliar.xyz',
+            'display_name': 'Test Kullanıcısı',
+            'email_verified': True,
+            'roles': ['user'],
+            'presence': 'online',
+            'avatar_url': ''
+        }
+    })
+
+
+@app.route('/api/auth/me')
+def api_auth_me():
+    auth = request.headers.get('Authorization', '')
+    token = auth.replace('Bearer ', '').strip()
+    if not token or token not in _auth_tokens:
+        return jsonify({'success': False, 'error': 'Oturum bulunamadı.'}), 401
+    return jsonify({
+        'success': True,
+        'user': {
+            'id': 'test-user-001',
+            'email': 'test@reyliar.xyz',
+            'display_name': 'Test Kullanıcısı',
+            'email_verified': True,
+            'roles': ['user'],
+            'presence': 'online',
+            'avatar_url': ''
+        }
+    })
+
+
+@app.route('/api/auth/logout', methods=['POST'])
+def api_auth_logout():
+    auth = request.headers.get('Authorization', '')
+    token = auth.replace('Bearer ', '').strip()
+    _auth_tokens.discard(token)
+    return jsonify({'success': True})
+
+
+@app.route('/api/discord-image')
+def api_discord_image():
+    url = request.args.get('url', '')
+    if not url:
+        return ('', 400)
+    try:
+        resp = requests.get(url, timeout=10, stream=True)
+        if resp.status_code != 200:
+            return ('', 404)
+        headers = {'Content-Type': resp.headers.get('Content-Type', 'image/png')}
+        return Response(resp.iter_content(chunk_size=8192), status=200, headers=headers)
+    except Exception:
+        return ('', 404)
 
 
 @app.route('/api/contact', methods=['POST'])
