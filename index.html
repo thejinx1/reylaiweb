@@ -11681,6 +11681,11 @@ function updateAccountUI() {
   if (!_accountUser) forceCloseSchoolPicker();
   updateSchoolSettingsUI();
   maybePromptForSchool();
+  updateAdminUI();
+}
+
+function updateAdminUI() {
+  document.body.classList.toggle('admin-can-upload', !!(isAdminAuthed() || (_accountUser && (_accountUser.is_admin || _accountUser.role === 'admin'))));
 }
 
 function mountAccountMenu() {
@@ -13587,6 +13592,7 @@ let _schoolSubmitting = false;
 // ── Auth ────────────────────────────────────────────────────────────────────────
 function getAdminAuthToken() { return sessionStorage.getItem('admin_auth_token') || ''; }
 function isAdminAuthed() { return !!getAdminAuthToken(); }
+function clearAdminAuth() { sessionStorage.removeItem('admin_auth_token'); updateAdminUI(); }
 
 var _authCallback = null;
 var _authSubmitting = false;
