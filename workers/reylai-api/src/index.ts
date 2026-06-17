@@ -879,6 +879,18 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
     return json({ success: true, uploaded: 0, skipped: 0, errors: [], static_hosted: true });
   }
 
+  if (request.method === "POST" && path === "/api/github/upload") {
+    return handleGithubUpload(request, env);
+  }
+
+  if (request.method === "GET" && path.startsWith("/api/github/temp-pdf/")) {
+    return handleTempPdfGet(request, env, path);
+  }
+
+  if (request.method === "DELETE" && path.startsWith("/api/github/temp-pdf/")) {
+    return handleTempPdfDelete(request, env, path);
+  }
+
   if (request.method === "POST" && path === "/api/analyze") {
     const auth = await requireAuth(request, env);
     if (auth instanceof Response) return auth;
@@ -5824,7 +5836,128 @@ async function fetchBookArchiveIds(env: Env): Promise<string[]> {
 }
 
 function archivePdfUrl(env: Env, id: string): string {
-  return new URL(`${encodeURIComponent(id)}.pdf`, ensureSlash(env.BOOKS_REMOTE_BASE_URL || "https://thejinx1.github.io/blupblupreylai-books/")).toString();
+  return new URL(`${encodeURIComponent(id)}.pdf`, ensureSlash(env.BOOKS_REMOTE_BASE_URL || "https://reyliar.github.io/blupblupreylai-books/")).toString();
+}
+
+async function handleGithubUpload(request: Request, env: Env): Promise<Response> {
+  const GITHUB_TOKEN = env.GITHUB_TOKEN;
+  if (!GITHUB_TOKEN) {
+    return json({ success: false, error: "GitHub token yapılandırılmamış." }, 400);
+  }
+  let body: { book_id?: string; file_data?: string; file_name?: string; grade?: string };
+  try {
+    body = await request.json() as typeof body;
+  } catch {
+    return json({ success: false, error: "Geçersiz JSON." }, 400);
+  }
+  const bookId = String(body.book_id || "").trim();
+  const fileData = String(body.file_data || "").trim();
+  const fileName = String(body.file_name || "").trim() || `${bookId}.pdf`;
+  if (!bookId || !fileData) {
+    return json({ success: false, error: "book_id ve file_data gerekli." }, 400);
+  }
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(bookId)) {
+    return json({ success: false, error: "Geçersiz book_id." }, 400);
+  }
+  const repoOwner = env.GITHUB_REPO_OWNER || "reyliar";
+  const repoName = env.GITHUB_REPO_NAME || "blupblupreylai-books";
+  const branch = env.GITHUB_API_BRANCH || "main";
+  const apiUrl = `https://api.github.com/repos/${encodeURIComponent(repoOwner)}/${encodeURIComponent(repoName)}/contents/${encodeURIComponent(bookId)}.pdf`;
+  const headers: Record<string, string> = {
+    "Authorization": `Bearer ${GITHUB_TOKEN}`,
+    "Accept": "application/vnd.github.v3+json",
+    "User-Agent": "ReylAI-Worker/1.0",
+  };
+  // Check if file already exists (get SHA)
+  let sha: string | undefined;
+  try {
+    const checkResp = await fetch(apiUrl, { method: "GET", headers });
+    if (checkResp.status === 200) {
+      const data = await checkResp.json<{ sha?: string }>();
+      sha = data.sha;
+    }
+  } catch { /* ignore */ }
+  const payload: Record<string, unknown> = {
+    message: `Add ${fileName} via ReylAI upload`,
+    content: fileData,
+    branch,
+  };
+  if (sha) payload.sha = sha;
+  // Push to GitHub
+  try {
+    const resp = await fetch(apiUrl, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (resp.status === 200 || resp.status === 201) {
+      const downloadUrl = `${env.BOOKS_REMOTE_BASE_URL.replace(/\/+$/, "")}/${encodeURIComponent(bookId)}.pdf`;
+
+      // Store temporarily in D1 for text extraction
+      if (fileData && env.DB) {
+        try {
+          const stagingId = crypto.randomUUID();
+          await env.DB.prepare(
+            `INSERT OR REPLACE INTO pdf_staging (id, book_id, file_name, file_data, grade, github_url, created_at, expires_at, scanned)
+             VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now', '+1 hour'), 0)`
+          ).bind(stagingId, bookId, fileName, fileData, body.grade || '9', downloadUrl).run();
+        } catch { /* temp storage failure is non-fatal */ }
+      }
+
+      return json({ success: true, download_url: downloadUrl, temp_pdf: true });
+    }
+    const errText = await resp.text();
+    return json({ success: false, error: `GitHub API hatası (${resp.status}): ${errText.slice(0, 500)}` }, 502);
+  } catch (err) {
+    return json({ success: false, error: `GitHub bağlantı hatası: ${err instanceof Error ? err.message : String(err)}` }, 502);
+  }
+}
+
+async function handleTempPdfGet(request: Request, env: Env, path: string): Promise<Response> {
+  const bookId = path.replace("/api/github/temp-pdf/", "").split("/")[0] || "";
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(bookId)) {
+    return json({ error: "Geçersiz book_id." }, 400);
+  }
+  if (!env.DB) {
+    return json({ error: "Veritabanı yapılandırılmamış." }, 503);
+  }
+  try {
+    const row = await env.DB.prepare(
+      "SELECT file_data FROM pdf_staging WHERE book_id = ? AND expires_at > datetime('now')"
+    ).bind(bookId).first<{ file_data: string }>();
+    if (!row) {
+      return json({ error: "PDF bulunamadı veya süresi doldu." }, 404);
+    }
+    const binaryStr = atob(row.file_data);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) {
+      bytes[i] = binaryStr.charCodeAt(i);
+    }
+    const headers: Record<string, string> = {
+      "Content-Type": "application/pdf",
+      "Cache-Control": "no-store",
+      "Access-Control-Allow-Origin": "*",
+    };
+    return new Response(bytes, { headers });
+  } catch (err) {
+    return json({ error: `PDF getirme hatası: ${err instanceof Error ? err.message : String(err)}` }, 500);
+  }
+}
+
+async function handleTempPdfDelete(request: Request, env: Env, path: string): Promise<Response> {
+  const bookId = path.replace("/api/github/temp-pdf/", "").split("/")[0] || "";
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(bookId)) {
+    return json({ error: "Geçersiz book_id." }, 400);
+  }
+  if (!env.DB) {
+    return json({ error: "Veritabanı yapılandırılmamış." }, 503);
+  }
+  try {
+    await env.DB.prepare("DELETE FROM pdf_staging WHERE book_id = ?").bind(bookId).run();
+    return json({ success: true, deleted: true });
+  } catch (err) {
+    return json({ error: `Silme hatası: ${err instanceof Error ? err.message : String(err)}` }, 500);
+  }
 }
 
 async function fetchScanData(env: Env, keys: string[]): Promise<ScanData | null> {

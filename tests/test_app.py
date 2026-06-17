@@ -346,7 +346,7 @@ class AppApiTests(unittest.TestCase):
         self.assertEqual(data[0]["pdf_source"], "book_archive")
         self.assertEqual(
             data[0]["pdf_url"],
-            "https://thejinx1.github.io/blupblupreylai-books/" + book_id + ".pdf",
+            "https://reyliar.github.io/blupblupreylai-books/" + book_id + ".pdf",
         )
 
     def test_serve_pdf_proxies_remote_range_without_full_download(self):

@@ -7217,6 +7217,18 @@ select {
   transform: translateY(-1px);
 }
 
+/* Admin-only elements: hidden by default, shown when body has admin-can-upload */
+.upload-nav-btn.admin-only,
+.footer-link.admin-only {
+  display: none !important;
+}
+body.admin-can-upload .upload-nav-btn.admin-only {
+  display: inline-flex !important;
+}
+body.admin-can-upload .footer-link.admin-only {
+  display: inline !important;
+}
+
 .bottom-grade-cluster {
   min-width: 106px;
   height: 46px;
@@ -10017,7 +10029,7 @@ body::after,
         <button class="grade-btn bottom-grade-btn"        data-grade="10" onclick="selectGrade('10')" aria-label="10. sınıf">10</button>
       </div>
     </div>
-    <button class="upload-nav-btn bottom-menu-item" type="button" onclick="openPdfPicker()" aria-label="Kitap yükle">
+    <button class="upload-nav-btn bottom-menu-item admin-only" id="uploadBookBtn" type="button" onclick="openPdfPicker()" aria-label="Kitap yükle">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       <span>Kitap Y&#252;kle</span>
     </button>
@@ -10037,7 +10049,7 @@ body::after,
           <div class="footer-col-list">
             <a class="footer-link" href="/library" onclick="navigateApp('/library'); return false;">Kütüphane</a>
             <a class="footer-link" href="/library/chat" onclick="navigateApp('/library/chat'); return false;">Sohbetler</a>
-            <a class="footer-link" href="#" onclick="openPdfPicker(); return false;">Kitap Yükle</a>
+            <a class="footer-link admin-only" href="#" onclick="openPdfPicker(); return false;" id="footerUploadLink">Kitap Yükle</a>
             <a class="footer-link" href="/message" onclick="navigateApp('/message'); return false;">Mesajlar</a>
           </div>
         </nav>
@@ -10771,7 +10783,7 @@ let _dmConversationSeq = 0;
 let _dmPanelLoadSeq = 0;
 let _dmMessagesUserId = '';
 let _dmMessageAbortController = null;
-const BOOKS_REMOTE_BASE_URL = "https://thejinx1.github.io/blupblupreylai-books/";
+const BOOKS_REMOTE_BASE_URL = "https://reyliar.github.io/blupblupreylai-books/";
 warmRemotePdfOrigin(BOOKS_REMOTE_BASE_URL);
 const DISCORD_CDN_BASE = 'https://cdn.discordapp.com';
 const FOUNDER_DISCORD_USER_ID = '1421177012814614548';
@@ -11682,6 +11694,11 @@ function updateAccountUI() {
   if (!_accountUser) forceCloseSchoolPicker();
   updateSchoolSettingsUI();
   maybePromptForSchool();
+  updateAdminUI();
+}
+
+function updateAdminUI() {
+  document.body.classList.toggle('admin-can-upload', !!(isAdminAuthed() || (_accountUser && (_accountUser.is_admin || _accountUser.role === 'admin'))));
 }
 
 function mountAccountMenu() {
@@ -13588,17 +13605,14 @@ let _schoolSubmitting = false;
 // ── Auth ────────────────────────────────────────────────────────────────────────
 function getAdminAuthToken() { return sessionStorage.getItem('admin_auth_token') || ''; }
 function isAdminAuthed() { return !!getAdminAuthToken(); }
+function clearAdminAuth() { sessionStorage.removeItem('admin_auth_token'); updateAdminUI(); }
 
 var _authCallback = null;
 var _authSubmitting = false;
 var _authPassTokenDirect = false;
 function requireAuth(callback, forcePrompt, options) {
   options = options || {};
-  if (!accountIsAdmin()) {
-    showToast('warning', 'Yönetici hesabı gerekli', 'Bu işlem sadece yönetici hesabı ile yapılabilir.', 4500);
-    return;
-  }
-  if (!options.directToken && !forcePrompt && isAdminAuthed()) { callback(); return; }
+  if (!options.directToken && !forcePrompt && (isAdminAuthed() || (_accountUser && (_accountUser.is_admin || _accountUser.role === 'admin')))) { callback(); return; }
   _abortPrefetches();
   _authCallback = callback;
   _authSubmitting = false;
@@ -13648,6 +13662,7 @@ async function submitAuth() {
     if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
     if (data.success && data.token) {
       sessionStorage.setItem('admin_auth_token', data.token);
+      updateAdminUI();
       closeAuth();
       runAuthedCallback(cb);
     } else {
@@ -13797,7 +13812,7 @@ async function uploadRenameCover() {
   var data = await res.json();
   if (!data.success) {
     if (data.auth === false) {
-      sessionStorage.removeItem('admin_auth_token');
+      clearAdminAuth();
     }
     throw new Error(data.error || 'Thumbnail güncellenemedi.');
   }
@@ -13816,7 +13831,7 @@ async function submitRename() {
       var data = await res.json();
       if (!data.success) {
         if (data.auth === false) {
-          sessionStorage.removeItem('admin_auth_token');
+          clearAdminAuth();
           var savedId = _renameBookId;
           closeRename();
           openRename(savedId, name);
@@ -15028,7 +15043,7 @@ async function syncManual() {
         showToast('warning', 'Bazı Hatalar', data.errors.slice(0,3).join('; '), 7000);
       }
     } else if (data.auth === false) {
-      sessionStorage.removeItem('admin_auth_token');
+      clearAdminAuth();
       setLibStatus('Yetkilendirme gerekli.', 'amber');
       requireAuth(function(){ syncManual(); });
     } else if (data.skipped) {
@@ -17991,7 +18006,7 @@ async function confirmDelete() {
     if (data.success) {
       setLibStatus('Kitap silindi.', 'green');
     } else if (data.auth === false) {
-      sessionStorage.removeItem('admin_auth_token');
+      clearAdminAuth();
       requireAuth(function(){ _pendingDeleteInfo = info; confirmDelete(); });
     } else {
       setLibStatus('Silme hatası: ' + (data.error || ''), 'red');

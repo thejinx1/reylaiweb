@@ -17,7 +17,7 @@
   ],
   "vars": {
     "STATIC_ORIGIN": "https://ai.reyliar.xyz/",
-    "BOOKS_REMOTE_BASE_URL": "https://thejinx1.github.io/blupblupreylai-books/",
+    "BOOKS_REMOTE_BASE_URL": "https://reyliar.github.io/blupblupreylai-books/",
     "MEB_SCHOOLS_API_URL": "https://www.meb.gov.tr/baglantilar/okullar/okullar_ajax.php",
     "GEMINI_API_URL": "https://generativelanguage.googleapis.com/v1beta/models",
     "GEMINI_MODEL": "gemini-3.1-pro",
@@ -29,7 +29,10 @@
     "AUTH_REQUIRE_TURNSTILE": "true",
     "RESEND_API_URL": "https://api.resend.com",
     "CONTACT_FORWARD_TO": "mynamesreyli@gmail.com",
-    "MAIL_PANEL_USER": "reyliar"
+    "MAIL_PANEL_USER": "reyliar",
+    "GITHUB_REPO_OWNER": "reyliar",
+    "GITHUB_REPO_NAME": "blupblupreylai-books",
+    "GITHUB_API_BRANCH": "main"
   },
   "d1_databases": [
     {
@@ -40,7 +43,7 @@
     }
   ],
   "secrets": {
-    "required": ["GEMINI_API_KEY", "MISTRAL_API_KEY", "GAS_WEB_APP_URL", "TURNSTILE_SECRET_KEY", "RESEND_API_KEY", "RESEND_WEBHOOK_SECRET", "MAIL_PANEL_PASSWORD"]
+    "required": ["GEMINI_API_KEY", "MISTRAL_API_KEY", "GAS_WEB_APP_URL", "TURNSTILE_SECRET_KEY", "RESEND_API_KEY", "RESEND_WEBHOOK_SECRET", "MAIL_PANEL_PASSWORD", "GITHUB_TOKEN"]
   },
   "observability": {
     "enabled": true,

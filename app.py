@@ -177,9 +177,10 @@ MISTRAL_API_URL     = (
 MISTRAL_MODEL       = _env("MISTRAL_MODEL", "mistral-large-latest") or "mistral-large-latest"
 OPENAI_API_KEY      = _env("OPENAI_API_KEY")
 BOOKS_REMOTE_BASE_URL = (
-    _env("BOOKS_REMOTE_BASE_URL", "https://thejinx1.github.io/blupblupreylai-books/")
-    or "https://thejinx1.github.io/blupblupreylai-books/"
+    _env("BOOKS_REMOTE_BASE_URL", "https://reyliar.github.io/blupblupreylai-books/")
+    or "https://reyliar.github.io/blupblupreylai-books/"
 ).rstrip("/") + "/"
+REYLAI_API_URL = _env("REYLAI_API_URL", "https://ai.reyliar.xyz") or "https://ai.reyliar.xyz"
 _REMOTE_BOOK_ID_RE = re.compile(
     r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
 )
@@ -1537,6 +1538,39 @@ def _download_from_drive(drive_id, dest_path):
     except Exception:
         pass
     return False
+
+
+def _upload_to_github(file_path, book_id, commit_message=""):
+    """Upload a PDF file to the GitHub books repository via the Cloudflare Worker API.
+    Returns the raw download URL on success, or empty string on failure.
+    Delegates to the Worker which has the GITHUB_TOKEN as a Cloudflare secret.
+    """
+    if not os.path.exists(file_path):
+        return ""
+    try:
+        with open(file_path, "rb") as f:
+            content = f.read()
+        encoded = base64.b64encode(content).decode("utf-8")
+        api_url = f"{REYLAI_API_URL.rstrip('/')}/api/github/upload"
+        payload = {
+            "book_id": book_id,
+            "file_data": encoded,
+            "file_name": os.path.basename(file_path) or f"{book_id}.pdf",
+        }
+        try:
+            resp = requests.post(api_url, json=payload, timeout=120)
+            if resp.status_code == 200:
+                data = resp.json()
+                if data.get("success") and data.get("download_url"):
+                    return data["download_url"]
+        except requests.exceptions.ConnectionError:
+            # Worker unreachable — upload won't work without Cloudflare
+            return ""
+        except Exception:
+            return ""
+        return ""
+    except Exception:
+        return ""
 
 
 def _download_from_url(url, dest_path):
@@ -9154,6 +9188,18 @@ select {
   transform: translateY(-1px);
 }
 
+/* Admin-only elements: hidden by default, shown when body has admin-can-upload */
+.upload-nav-btn.admin-only,
+.footer-link.admin-only {
+  display: none !important;
+}
+body.admin-can-upload .upload-nav-btn.admin-only {
+  display: inline-flex !important;
+}
+body.admin-can-upload .footer-link.admin-only {
+  display: inline !important;
+}
+
 .bottom-grade-cluster {
   min-width: 106px;
   height: 46px;
@@ -11965,7 +12011,7 @@ body::after,
         <button class="grade-btn bottom-grade-btn"        data-grade="10" onclick="selectGrade('10')" aria-label="10. sınıf">10</button>
       </div>
     </div>
-    <button class="upload-nav-btn bottom-menu-item" type="button" onclick="openPdfPicker()" aria-label="Kitap yükle">
+    <button class="upload-nav-btn bottom-menu-item admin-only" id="uploadBookBtn" type="button" onclick="openPdfPicker()" aria-label="Kitap yükle">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       <span>Kitap Y&#252;kle</span>
     </button>
@@ -13632,6 +13678,11 @@ function updateAccountUI() {
   if (!_accountUser) forceCloseSchoolPicker();
   updateSchoolSettingsUI();
   maybePromptForSchool();
+  updateAdminUI();
+}
+
+function updateAdminUI() {
+  document.body.classList.toggle('admin-can-upload', !!(isAdminAuthed() || (_accountUser && (_accountUser.is_admin || _accountUser.role === 'admin'))));
 }
 
 function mountAccountMenu() {
@@ -15543,17 +15594,14 @@ let _schoolSubmitting = false;
 // ── Auth ────────────────────────────────────────────────────────────────────────
 function getAdminAuthToken() { return sessionStorage.getItem('admin_auth_token') || ''; }
 function isAdminAuthed() { return !!getAdminAuthToken(); }
+function clearAdminAuth() { sessionStorage.removeItem('admin_auth_token'); updateAdminUI(); }
 
 var _authCallback = null;
 var _authSubmitting = false;
 var _authPassTokenDirect = false;
 function requireAuth(callback, forcePrompt, options) {
   options = options || {};
-  if (!accountIsAdmin()) {
-    showToast('warning', 'Yönetici hesabı gerekli', 'Bu işlem sadece yönetici hesabı ile yapılabilir.', 4500);
-    return;
-  }
-  if (!options.directToken && !forcePrompt && isAdminAuthed()) { callback(); return; }
+  if (!options.directToken && !forcePrompt && (isAdminAuthed() || (_accountUser && (_accountUser.is_admin || _accountUser.role === 'admin')))) { callback(); return; }
   _abortPrefetches();
   _authCallback = callback;
   _authSubmitting = false;
@@ -15603,6 +15651,7 @@ async function submitAuth() {
     if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
     if (data.success && data.token) {
       sessionStorage.setItem('admin_auth_token', data.token);
+      updateAdminUI();
       closeAuth();
       runAuthedCallback(cb);
     } else {
@@ -15752,7 +15801,7 @@ async function uploadRenameCover() {
   var data = await res.json();
   if (!data.success) {
     if (data.auth === false) {
-      sessionStorage.removeItem('admin_auth_token');
+      clearAdminAuth();
     }
     throw new Error(data.error || 'Thumbnail güncellenemedi.');
   }
@@ -15771,7 +15820,7 @@ async function submitRename() {
       var data = await res.json();
       if (!data.success) {
         if (data.auth === false) {
-          sessionStorage.removeItem('admin_auth_token');
+          clearAdminAuth();
           var savedId = _renameBookId;
           closeRename();
           openRename(savedId, name);
@@ -16983,7 +17032,7 @@ async function syncManual() {
         showToast('warning', 'Baz\u0131 Hatalar', data.errors.slice(0,3).join('; '), 7000);
       }
     } else if (data.auth === false) {
-      sessionStorage.removeItem('admin_auth_token');
+      clearAdminAuth();
       setLibStatus('Yetkilendirme gerekli.', 'amber');
       requireAuth(function(){ syncManual(); });
     } else if (data.skipped) {
@@ -19944,7 +19993,7 @@ async function confirmDelete() {
     if (data.success) {
       setLibStatus('Kitap silindi.', 'green');
     } else if (data.auth === false) {
-      sessionStorage.removeItem('admin_auth_token');
+      clearAdminAuth();
       requireAuth(function(){ _pendingDeleteInfo = info; confirmDelete(); });
     } else {
       setLibStatus('Silme hatas\u0131: ' + (data.error || ''), 'red');
@@ -20105,7 +20154,7 @@ async function submitAddBook() {
       showToast('success', 'Kitap Eklendi', (data.book.title || fileId) + ' k\u00fct\u00fcphaneye eklendi.', 5000);
       if (grade === selectedGrade) loadLibrary();
     } else if (data.auth === false) {
-      sessionStorage.removeItem('admin_auth_token');
+      clearAdminAuth();
       requireAuth(function(){ submitAddBook(); });
     } else {
       showToast('error', 'Eklenemedi', data.error || 'Bilinmeyen hata', 6000);
@@ -20488,7 +20537,9 @@ def api_auth_login():
             'email': 'test@reyliar.xyz',
             'display_name': 'Test Kullanıcısı',
             'email_verified': True,
-            'roles': ['user'],
+            'is_admin': True,
+            'role': 'admin',
+            'roles': ['admin'],
             'presence': 'online',
             'avatar_url': ''
         }
@@ -20507,7 +20558,9 @@ def api_auth_signup():
             'email': 'test@reyliar.xyz',
             'display_name': 'Test Kullanıcısı',
             'email_verified': True,
-            'roles': ['user'],
+            'is_admin': True,
+            'role': 'admin',
+            'roles': ['admin'],
             'presence': 'online',
             'avatar_url': ''
         }
@@ -20527,7 +20580,9 @@ def api_auth_me():
             'email': 'test@reyliar.xyz',
             'display_name': 'Test Kullanıcısı',
             'email_verified': True,
-            'roles': ['user'],
+            'is_admin': True,
+            'role': 'admin',
+            'roles': ['admin'],
             'presence': 'online',
             'avatar_url': ''
         }
@@ -20737,24 +20792,78 @@ def api_upload():
         'scan_pages':  0,
         'added_at':    _utc_now_iso()
     }
+
+    # Try to upload to GitHub books repository
+    github_url = _upload_to_github(local_path, book_id, f"Add {name} via ReylAI upload")
+    if github_url:
+        entry['pdf_url'] = github_url
+        entry['pdf_source'] = 'book_archive'
+        entry['local_path'] = ''  # Clear local path; served remotely
+        # Remove local file since it's now on GitHub & Cloudflare temp
+        try:
+            os.remove(local_path)
+        except Exception:
+            pass
+
     library = load_library()
     library.append(entry)
     save_library(library)
-    start_scan(book_id, local_path=local_path)
 
-    # Extract cover image and title in background thread
+    # Use Cloudflare temp PDF URL for scanning (faster than GitHub)
+    scan_url = ""
+    if github_url:
+        scan_url = f"{REYLAI_API_URL.rstrip('/')}/api/github/temp-pdf/{book_id}"
+        start_scan(book_id, remote_url=scan_url)
+    else:
+        start_scan(book_id, local_path=local_path)
+
+    # Extract cover image and title in background thread, then clean up temp PDF
     def _post_upload(bid, lpath, lib_entry):
-        cover = _extract_cover(bid, lpath)
-        if cover:
-            title = _extract_title_from_cover(cover)
-            lib2 = load_library()
-            for b in lib2:
-                if (b.get('book_id') or b.get('drive_id', '')) == bid:
-                    b['cover_path'] = cover
-                    if title:
-                        b['title'] = title
-                    break
-            save_library(lib2)
+        src_path = lpath if lpath and os.path.exists(lpath) else ""
+        if not src_path and lib_entry.get('pdf_url'):
+            # Try Cloudflare temp PDF first
+            temp_pdf_url = f"{REYLAI_API_URL.rstrip('/')}/api/github/temp-pdf/{bid}"
+            tmp_path = os.path.join(SCANS_DIR, f'_tmp_cover_{uuid.uuid4().hex}.pdf')
+            if _download_from_url(temp_pdf_url, tmp_path):
+                src_path = tmp_path
+            else:
+                # Fall back to GitHub URL
+                tmp_path2 = os.path.join(SCANS_DIR, f'_tmp_cover_{uuid.uuid4().hex}.pdf')
+                if _download_from_url(lib_entry['pdf_url'], tmp_path2):
+                    src_path = tmp_path2
+        if src_path and os.path.exists(src_path):
+            cover = _extract_cover(bid, src_path)
+            if cover:
+                title = _extract_title_from_cover(cover)
+                lib2 = load_library()
+                for b in lib2:
+                    if (b.get('book_id') or b.get('drive_id', '')) == bid:
+                        b['cover_path'] = cover
+                        if title:
+                            b['title'] = title
+                        break
+                save_library(lib2)
+            # Clean up temp download
+            try:
+                if src_path != lpath and os.path.exists(src_path):
+                    os.remove(src_path)
+            except Exception:
+                pass
+        # Wait for scan to finish, then delete temp PDF from Cloudflare
+        if lib_entry.get('pdf_url'):
+            try:
+                for _ in range(30):
+                    lib3 = load_library()
+                    fb = next((b for b in lib3 if b.get('book_id') == bid), None)
+                    if fb and fb.get('scan_status') in ('done', 'failed'):
+                        break
+                    time.sleep(2)
+                requests.delete(
+                    f"{REYLAI_API_URL.rstrip('/')}/api/github/temp-pdf/{bid}",
+                    timeout=10,
+                )
+            except Exception:
+                pass
 
     threading.Thread(target=_post_upload, args=(book_id, local_path, entry), daemon=True).start()
     return jsonify({'success': True, 'book': _public_book_payload(entry)})
